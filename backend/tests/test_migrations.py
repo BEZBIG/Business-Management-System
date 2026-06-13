@@ -20,8 +20,15 @@ def test_timestamp_columns_are_tz() -> None:
 
     This is a DDL inspection test: it imports the mixin class and inspects
     the SQLAlchemy column type directly — no database connection required.
+
+    SQLAlchemy 2.0 mapped_column() API notes:
+    - On a bare mixin (not yet mapped), getattr(TimestampMixin, col_name) returns
+      a MappedColumn descriptor object, not an InstrumentedAttribute.
+    - MappedColumn.column gives the underlying Column object (accessible pre-mapping).
+    - We use MappedColumn.column.type for the type inspection.
     """
     from sqlalchemy import DateTime  # noqa: PLC0415
+    from sqlalchemy.orm import MappedColumn  # noqa: PLC0415
 
     from app.db.base import TimestampMixin  # noqa: PLC0415
 
@@ -33,13 +40,16 @@ def test_timestamp_columns_are_tz() -> None:
             "Add it with DateTime(timezone=True) (D-10, NFR-01 criterion #3)."
         )
 
-        # Navigate from the InstrumentedAttribute → Column → type
-        # Works for both classic mapped_column() and column_property() declarations
-        try:
-            col_type = attr.property.columns[0].type
-        except AttributeError:
-            # MappedColumn — access via expression
-            col_type = attr.expression.type  # type: ignore[attr-defined]
+        # SQLAlchemy 2.0: on a mixin class (not a mapped model), mapped_column()
+        # attributes are MappedColumn descriptors.  Access the Column via .column.
+        if isinstance(attr, MappedColumn):
+            col_type = attr.column.type
+        else:
+            # Fallback for legacy mapped classes / InstrumentedAttribute
+            try:
+                col_type = attr.property.columns[0].type
+            except AttributeError:
+                col_type = attr.expression.type  # type: ignore[attr-defined]
 
         assert isinstance(col_type, DateTime), (
             f"TimestampMixin.{col_name} must use DateTime type, got {type(col_type).__name__!r}"

@@ -11,7 +11,7 @@ Activated in plan 01-02 (Wave 2): skip decorators removed; implementation added.
 from __future__ import annotations
 
 import pytest
-from sqlalchemy import Column, DateTime, Integer, String, func
+from sqlalchemy import Column, ForeignKey, Integer, String
 from sqlalchemy.exc import InvalidRequestError
 from sqlalchemy.orm import relationship
 
@@ -40,16 +40,18 @@ def test_lazy_raise_on_access() -> None:
     selectinload()/joinedload(), blocking accidental sync DB access in async context.
 
     This test builds minimal local ORM models on TimestampMixin/Base to prove
-    the lazy='raise' pattern raises InvalidRequestError immediately.
+    the lazy='raise' pattern raises InvalidRequestError immediately on a
+    detached instance.
     """
     from sqlalchemy import create_engine
     from sqlalchemy.orm import Session
 
     from app.db.base import Base, TimestampMixin  # noqa: PLC0415
 
-    # ---- Build test-local models --------------------------------------------
+    # ---- Build test-local models with proper FK so SQLAlchemy can map them ----
     class Parent(Base, TimestampMixin):
         __tablename__ = "test_parent_lazy_raise"
+        __table_args__ = {"extend_existing": True}
         id: int = Column(Integer, primary_key=True)
         name: str = Column(String(50))
         # lazy="raise" — accessing this without eager-load must raise immediately
@@ -57,12 +59,14 @@ def test_lazy_raise_on_access() -> None:
 
     class Child(Base, TimestampMixin):
         __tablename__ = "test_child_lazy_raise"
+        __table_args__ = {"extend_existing": True}
         id: int = Column(Integer, primary_key=True)
-        parent_id: int = Column(Integer)
+        parent_id: int = Column(Integer, ForeignKey("test_parent_lazy_raise.id"), nullable=False)
         parent = relationship("Parent", lazy="raise", back_populates="children")
 
     # ---- Spin up an in-memory SQLite engine for the test --------------------
-    # We only need to prove lazy="raise" raises — no async required here
+    # We only need to prove lazy="raise" raises — no async required here.
+    # SQLite is used because it doesn't need a live PostgreSQL connection.
     engine = create_engine("sqlite:///:memory:", echo=False)
     Base.metadata.create_all(bind=engine)
 
@@ -75,8 +79,10 @@ def test_lazy_raise_on_access() -> None:
     # Load a fresh instance (no eager load of children)
     with Session(engine) as session:
         loaded = session.get(Parent, 1)
-        session.expunge(loaded)  # detach so lazy access definitely hits the guard
+        # Detach so any attribute access triggers the lazy-load guard
+        session.expunge(loaded)  # type: ignore[arg-type]
 
-    # Accessing the relationship on a detached object must raise immediately
+    # Accessing the relationship on a detached object with lazy="raise"
+    # must raise InvalidRequestError immediately — not silently block.
     with pytest.raises(InvalidRequestError):
         _ = loaded.children  # type: ignore[union-attr]

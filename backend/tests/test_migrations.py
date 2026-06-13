@@ -5,21 +5,12 @@ Tests:
   test_timestamp_columns_are_tz — TimestampMixin uses DateTime(timezone=True)
                                   for all timestamp columns (TIMESTAMPTZ in PG).
 
-This is a Wave 0 stub: TimestampMixin is implemented in plan 01-02 (app/db/base.py).
-The test is SKIPPED until then.
-
-When 01-02 is complete:
-  1. Remove the pytest.mark.skip decorator.
-  2. Ensure `app.db.base` exports `TimestampMixin`.
-  3. The test inspects the mixin column declarations — no live DB connection required.
+Activated in plan 01-02 (Wave 2): skip decorator removed; implementation added.
 """
 
 from __future__ import annotations
 
-import pytest
 
-
-@pytest.mark.skip(reason="app.db.base.TimestampMixin implemented in plan 01-02")
 def test_timestamp_columns_are_tz() -> None:
     """TimestampMixin must declare created_at and updated_at with DateTime(timezone=True).
 
@@ -29,15 +20,6 @@ def test_timestamp_columns_are_tz() -> None:
 
     This is a DDL inspection test: it imports the mixin class and inspects
     the SQLAlchemy column type directly — no database connection required.
-
-    How to verify after 01-02:
-      from sqlalchemy import DateTime, inspect
-      from app.db.base import TimestampMixin
-
-      for col_name in ("created_at", "updated_at"):
-          col = TimestampMixin.__dict__.get(col_name)
-          # For mapped_column, inspect the MappedColumn's expression
-          assert col is not None, f"TimestampMixin missing column {col_name!r}"
     """
     from sqlalchemy import DateTime  # noqa: PLC0415
 

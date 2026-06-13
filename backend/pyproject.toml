@@ -1,0 +1,57 @@
+[project]
+name = "teamflow-backend"
+version = "0.1.0"
+description = "TeamFlow — Business Management System backend"
+requires-python = ">=3.12,<3.13"
+
+dependencies = [
+    "fastapi==0.136.3",
+    "uvicorn[standard]>=0.34,<0.50",
+    "gunicorn>=23,<27",
+    "sqlalchemy[asyncio]==2.0.50",
+    "asyncpg==0.31.0",
+    "alembic==1.18.4",
+    "redis[asyncio]>=7,<9",
+    "faststream[rabbit]>=0.7,<0.8",
+    "aio-pika>=9.5,<10",
+    "pydantic>=2.9,<3",
+    "pydantic-settings>=2.6,<3",
+    "structlog>=24,<27",
+    "prometheus-fastapi-instrumentator>=7,<9",
+    "pyjwt[crypto]>=2.9,<3",
+    "pwdlib[argon2,bcrypt]>=0.2,<0.4",
+    "sqladmin[full]>=0.20,<0.28",
+    "itsdangerous>=2.2,<3",
+    "python-multipart>=0.0.12,<0.1",
+    "httpx>=0.28,<0.29",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=9",
+    "pytest-asyncio>=1.0",
+    "ruff>=0.15",
+    "mypy>=2",
+    "pre-commit>=4",
+]
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+testpaths = ["tests"]
+markers = [
+    "integration: marks tests as integration tests (require Docker infrastructure)",
+]
+
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B", "S"]
+ignore = ["S101"]
+
+[tool.mypy]
+python_version = "3.12"
+strict = true
+plugins = ["sqlalchemy.ext.mypy.plugin"]
+ignore_missing_imports = true

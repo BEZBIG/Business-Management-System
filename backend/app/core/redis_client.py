@@ -1,12 +1,6 @@
-"""
-Async Redis client via redis.asyncio (redis-py 7+/8+).
+"""Async-клиент Redis через redis.asyncio (redis-py 7+).
 
-Uses redis.asyncio namespace — NOT standalone aioredis (forbidden by project docs §"What NOT to Use").
-decode_responses=True: all values are returned as str (not bytes); convenient for
-session tokens, pub/sub payloads, and rate-limit counters.
-
-Exported singleton:
-  redis_client — used in /health/ready ping check and closed in lifespan shutdown.
+Используется пространство redis.asyncio (не aioredis); decode_responses=True — значения как str.
 """
 
 from __future__ import annotations

@@ -1,4 +1,7 @@
 .planning/
+.claude/
+CLAUDE.md
+.pre-commit-config.yaml
 
 # Environment files — never commit real secrets
 .env

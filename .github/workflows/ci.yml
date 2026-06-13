@@ -1,7 +1,3 @@
-# TeamFlow CI — D-12: lint + type-check + tests on every push and PR
-# Integration tests (broker-restart) are excluded from CI — they require Docker compose
-# and are verified manually at the phase gate (01-VALIDATION.md manual-only criterion #5).
-
 name: CI
 
 on:

@@ -1,21 +1,6 @@
-"""
-FastAPI dependency for yielding an async SQLAlchemy session.
+"""FastAPI-зависимость, выдающая async-сессию SQLAlchemy.
 
-Usage in a FastAPI endpoint:
-    from fastapi import Depends
-    from sqlalchemy.ext.asyncio import AsyncSession
-    from app.db.session import get_async_session
-
-    @router.get("/items")
-    async def list_items(session: AsyncSession = Depends(get_async_session)):
-        ...
-
-The dependency:
-  1. Opens a session via async_session_factory (expire_on_commit=False — Pitfall 2).
-  2. Yields the session to the endpoint handler.
-  3. On success: commits the transaction.
-  4. On exception: rolls back and re-raises.
-  5. Session is always closed by the context manager after yield.
+Открывает сессию на запрос, коммитит при успехе и откатывает при исключении.
 """
 
 from __future__ import annotations
@@ -28,10 +13,9 @@ from app.db.engine import async_session_factory
 
 
 async def get_async_session() -> AsyncGenerator[AsyncSession, None]:
-    """FastAPI dependency that yields an AsyncSession per request.
+    """Зависимость FastAPI: выдаёт AsyncSession на запрос.
 
-    Commits on success, rolls back on any exception.
-    Session lifetime is scoped to the HTTP request (or caller scope).
+    Коммит при успехе, rollback при любом исключении; сессия закрывается контекст-менеджером.
     """
     async with async_session_factory() as session:
         try:

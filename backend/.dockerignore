@@ -1,0 +1,30 @@
+# Python cache
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# Virtual environment — uv installs inside the image
+.venv/
+
+# Test and lint caches
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# Test files — not needed in the image
+tests/
+
+# Git history — not needed in the image
+.git/
+.gitignore
+
+# Secrets — MUST NOT enter the image (T-04-02)
+.env
+
+# Editor and CI artifacts
+.vscode/
+.github/
+
+# Documentation
+*.md

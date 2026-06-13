@@ -33,4 +33,6 @@ class Settings(BaseSettings):
 
 
 # Module-level singleton; imported everywhere as `from app.core.config import settings`
-settings = Settings()
+# pydantic-settings resolves required fields (database_url, redis_url, rabbitmq_url) from
+# environment variables at runtime; mypy strict mode cannot verify env-sourced defaults.
+settings = Settings()  # type: ignore[call-arg]  # noqa: S106

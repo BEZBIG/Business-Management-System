@@ -35,7 +35,7 @@ class RequestIDMiddleware(BaseHTTPMiddleware):
         # Bind to structlog context — picked up by merge_contextvars processor
         structlog.contextvars.bind_contextvars(request_id=request_id)
 
-        response: Response = await call_next(request)  # type: ignore[arg-type]
+        response: Response = await call_next(request)  # type: ignore[operator]
 
         # Echo the ID back so callers can correlate logs
         response.headers[self._header_name] = request_id

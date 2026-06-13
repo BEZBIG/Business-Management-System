@@ -1,0 +1,38 @@
+# TeamFlow CI — D-12: lint + type-check + tests on every push and PR
+# Integration tests (broker-restart) are excluded from CI — they require Docker compose
+# and are verified manually at the phase gate (01-VALIDATION.md manual-only criterion #5).
+
+name: CI
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  lint-and-test:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: backend
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up uv
+        uses: astral-sh/setup-uv@v4
+
+      - name: Install dependencies
+        run: uv sync --extra dev --frozen
+
+      - name: Ruff lint check
+        run: uv run ruff check .
+
+      - name: Ruff format check
+        run: uv run ruff format --check .
+
+      - name: Mypy type check
+        run: uv run mypy app
+
+      - name: Run tests (unit only — exclude integration)
+        run: uv run pytest -m "not integration" -v

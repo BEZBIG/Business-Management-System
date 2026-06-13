@@ -2,11 +2,11 @@
 Health endpoint tests — NFR-01 criterion #1.
 
 Tests:
-  test_liveness                         — GET /health/live returns 200 {"status":"ok"}, no I/O (D-07)
-  test_readiness_ok                     — GET /health/ready returns 200 with all three service statuses
-                                          (uses client_all_ok fixture — mocked dependencies)
-  test_readiness_503_on_dependency_down — GET /health/ready returns 503 when any dependency is down
-                                          (uses client_dep_down fixture — mocked failing dependencies)
+  test_liveness                         — GET /health/live returns 200 {"status":"ok"}, no I/O
+  test_readiness_ok                     — GET /health/ready returns 200 with all three service
+                                          statuses (uses client_all_ok — mocked dependencies)
+  test_readiness_503_on_dependency_down — GET /health/ready returns 503 when any dependency
+                                          is down (uses client_dep_down — mocked failing deps)
 
 These tests cover NFR-01 criterion #1 against mocked dependencies so they run
 without requiring real Docker services (unit test scope).
@@ -71,8 +71,7 @@ async def test_readiness_503_on_dependency_down(client_dep_down: AsyncClient) ->
     any_down = any(v != "ok" for v in services.values())
     if any_down:
         assert response.status_code == 503, (
-            "Expected 503 when a dependency is down, "
-            f"got {response.status_code}. Body: {body}"
+            f"Expected 503 when a dependency is down, got {response.status_code}. Body: {body}"
         )
     else:
         # All up — 200 is correct (should not happen with client_dep_down fixture)

@@ -14,10 +14,11 @@ from __future__ import annotations
 import asyncio
 from logging.config import fileConfig
 
-from alembic import context
 from sqlalchemy import pool
 from sqlalchemy.engine import Connection
 from sqlalchemy.ext.asyncio import create_async_engine
+
+from alembic import context
 
 # ---------------------------------------------------------------------------
 # Alembic config object — access to alembic.ini values
@@ -35,8 +36,8 @@ if config.config_file_name is not None:
 
 # Import Base so that all future model modules that import Base register
 # their tables with Base.metadata (autogenerate support)
-from app.db.base import Base  # noqa: E402
 from app.core.config import settings  # noqa: E402
+from app.db.base import Base  # noqa: E402
 
 target_metadata = Base.metadata
 
@@ -52,9 +53,7 @@ def run_migrations_offline() -> None:
     (swap asyncpg driver for psycopg2 for offline mode).
     """
     # Convert async DSN to a sync-compatible one for offline SQL generation
-    url = settings.database_url.replace(
-        "postgresql+asyncpg://", "postgresql+psycopg2://", 1
-    )
+    url = settings.database_url.replace("postgresql+asyncpg://", "postgresql+psycopg2://", 1)
     context.configure(
         url=url,
         target_metadata=target_metadata,
@@ -80,7 +79,7 @@ def do_run_migrations(connection: Connection) -> None:
     context.configure(
         connection=connection,
         target_metadata=target_metadata,
-        compare_type=True,      # detect column type changes in autogenerate
+        compare_type=True,  # detect column type changes in autogenerate
         compare_server_default=True,  # detect server_default changes
     )
     with context.begin_transaction():

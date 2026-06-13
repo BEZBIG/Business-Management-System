@@ -27,7 +27,7 @@ Design notes:
 from __future__ import annotations
 
 import os
-from typing import AsyncGenerator
+from collections.abc import AsyncGenerator
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
@@ -35,10 +35,10 @@ from httpx import ASGITransport, AsyncClient
 from sqlalchemy.ext.asyncio import AsyncEngine, AsyncSession, create_async_engine
 from sqlalchemy.pool import NullPool
 
-
 # ---------------------------------------------------------------------------
 # Backend selection — must be "asyncio" so pytest-asyncio 1.4.0 picks it up
 # ---------------------------------------------------------------------------
+
 
 @pytest.fixture(scope="session")
 def anyio_backend() -> str:
@@ -48,6 +48,7 @@ def anyio_backend() -> str:
 # ---------------------------------------------------------------------------
 # Async engine with NullPool — safe for concurrent test fixtures (A1)
 # ---------------------------------------------------------------------------
+
 
 @pytest.fixture
 async def async_engine() -> AsyncGenerator[AsyncEngine, None]:
@@ -59,7 +60,9 @@ async def async_engine() -> AsyncGenerator[AsyncEngine, None]:
     """
     url = os.environ.get(
         "TEST_DATABASE_URL",
-        os.environ.get("DATABASE_URL", "postgresql+asyncpg://teamflow:teamflow@localhost/teamflow_test"),
+        os.environ.get(
+            "DATABASE_URL", "postgresql+asyncpg://teamflow:teamflow@localhost/teamflow_test"
+        ),
     )
     engine = create_async_engine(url, poolclass=NullPool)
     try:
@@ -71,6 +74,7 @@ async def async_engine() -> AsyncGenerator[AsyncEngine, None]:
 # ---------------------------------------------------------------------------
 # HTTP client backed by the ASGI app (deferred import so collection succeeds)
 # ---------------------------------------------------------------------------
+
 
 @pytest.fixture
 async def client() -> AsyncGenerator[AsyncClient, None]:
@@ -99,6 +103,7 @@ async def client() -> AsyncGenerator[AsyncClient, None]:
 # ---------------------------------------------------------------------------
 # Dependency mocks for /health/ready readiness tests
 # ---------------------------------------------------------------------------
+
 
 @pytest.fixture
 def mock_redis_ok() -> AsyncMock:
@@ -144,6 +149,7 @@ def mock_session_ok() -> AsyncMock:
 # ---------------------------------------------------------------------------
 # Patched clients for unit tests (no real services needed)
 # ---------------------------------------------------------------------------
+
 
 @pytest.fixture
 async def client_all_ok(

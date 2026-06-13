@@ -27,10 +27,10 @@ from app.core.config import settings
 
 engine = create_async_engine(
     settings.database_url,
-    pool_size=settings.db_pool_size,        # default 10, D-13
+    pool_size=settings.db_pool_size,  # default 10, D-13
     max_overflow=settings.db_max_overflow,  # default 5, D-13
-    pool_pre_ping=True,                     # health-check before yielding from pool, T-02-02
-    echo=settings.environment == "dev",     # SQL logging in dev only
+    pool_pre_ping=True,  # health-check before yielding from pool, T-02-02
+    echo=settings.environment == "dev",  # SQL logging in dev only
 )
 
 # ---------------------------------------------------------------------------
@@ -41,5 +41,5 @@ async_session_factory = async_sessionmaker(
     bind=engine,
     class_=AsyncSession,
     expire_on_commit=False,  # prevents MissingGreenlet after commit (Pitfall 2)
-    autoflush=False,         # explicit flush; avoids implicit I/O surprises
+    autoflush=False,  # explicit flush; avoids implicit I/O surprises
 )

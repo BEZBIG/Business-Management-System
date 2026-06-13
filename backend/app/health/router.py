@@ -42,7 +42,7 @@ async def liveness() -> dict[str, str]:
 
 @router.get("/ready")
 async def readiness(
-    session: AsyncSession = Depends(get_async_session),
+    session: AsyncSession = Depends(get_async_session),  # noqa: B008
 ) -> JSONResponse:
     """Readiness probe — pings all three dependencies (D-08, criterion #1).
 
@@ -71,7 +71,7 @@ async def readiness(
 
     # --- RabbitMQ (via broker connection state) ---
     try:
-        if broker.connection is not None and not broker.connection.is_closed:
+        if broker.connection is not None and not broker.connection.is_closed:  # type: ignore[attr-defined]
             checks["rabbitmq"] = "ok"
         else:
             checks["rabbitmq"] = "error"

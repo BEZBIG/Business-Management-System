@@ -22,6 +22,6 @@ from app.core.config import settings
 
 broker = RabbitBroker(
     url=settings.rabbitmq_url,
-    fail_fast=False,          # do not crash on startup if broker is unavailable (Pitfall 7)
-    reconnect_interval=5.0,   # seconds between reconnect attempts (T-03-03)
+    fail_fast=False,  # do not crash on startup if broker is unavailable (Pitfall 7)
+    reconnect_interval=5.0,  # seconds between reconnect attempts (T-03-03)
 )

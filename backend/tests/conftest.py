@@ -18,9 +18,13 @@ def anyio_backend() -> str:
     return "asyncio"
 
 
-@pytest.fixture
+@pytest.fixture(scope="session")
 async def async_engine() -> AsyncGenerator[AsyncEngine, None]:
-    """Создаёт временный async-engine на тестовый DATABASE_URL с NullPool."""
+    """Session-scoped async-engine на тестовый DATABASE_URL с NullPool.
+
+    Session-scope + session-loop (pyproject) держит asyncpg-соединения на одном
+    event loop — иначе GC закрытого loop роняет интеграционные тесты.
+    """
     url = os.environ.get(
         "TEST_DATABASE_URL",
         os.environ.get(

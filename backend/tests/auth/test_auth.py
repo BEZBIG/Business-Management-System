@@ -14,7 +14,6 @@ import pytest
 from httpx import AsyncClient
 from pydantic import ValidationError
 
-
 # ---------------------------------------------------------------------------
 # Task 1: security.py — unit-тесты (password hash/verify + JWT encode/decode)
 # ---------------------------------------------------------------------------
@@ -230,7 +229,7 @@ async def test_create_user_assigns_role_user() -> None:
 
 @pytest.mark.asyncio
 async def test_change_password_wrong_current_returns_false() -> None:
-    """change_password при несовпадении current_password возвращает False; хеш не меняется (D-05)."""
+    """change_password при неверном current_password → False; хеш не меняется (D-05)."""
     from app.auth.models import User, UserRole
     from app.auth.security import password_hasher
     from app.auth.service import change_password
@@ -472,104 +471,174 @@ async def test_rbac_user_forbidden() -> None:
 
 
 # ---------------------------------------------------------------------------
-# Wave 0 HTTP endpoint stubs — реализуются в Plan 02-03
+# Plan 02-03: HTTP endpoint-тесты (интеграционные — требуют живой БД + Redis).
+# Помечены @pytest.mark.integration (project convention: tests requiring Docker
+# infrastructure); исключаются из CI `-m "not integration"`, запускаются в Docker.
 # ---------------------------------------------------------------------------
 
 
-@pytest.mark.asyncio
+@pytest.mark.integration
 async def test_register_success(client: AsyncClient) -> None:
-    """POST /auth/register с валидными данными должен вернуть 201 и access_token.
+    """POST /auth/register с валидными данными → 201 + access_token + HttpOnly refresh-cookie.
 
     AUTH-01: регистрация нового пользователя с уникальным email и сильным паролем.
     """
-    raise NotImplementedError("Реализовать в Plan 02-03: POST /auth/register")
+    from sqlalchemy import delete
+    from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
+
+    from app.auth.models import User
+    from app.core.config import settings
+
+    email = "reg_success_0203@example.com"
+    try:
+        resp = await client.post(
+            "/auth/register", json={"email": email, "password": "Str0ng!Passw0rd"}
+        )
+        assert resp.status_code == 201, resp.text
+        body = resp.json()
+        assert body["access_token"]
+        assert body["token_type"] == "bearer"
+        set_cookie = resp.headers.get("set-cookie", "")
+        assert "refresh_token=" in set_cookie
+        assert "HttpOnly" in set_cookie
+        assert "Path=/auth" in set_cookie
+    finally:
+        engine = create_async_engine(settings.database_url)
+        async with AsyncSession(engine) as session:
+            await session.execute(delete(User).where(User.email == email))
+            await session.commit()
+        await engine.dispose()
 
 
-@pytest.mark.asyncio
-async def test_register_duplicate_email(client: AsyncClient) -> None:
-    """POST /auth/register с уже существующим email должен вернуть 409.
+@pytest.mark.integration
+async def test_register_duplicate_email(client: AsyncClient, test_user: object) -> None:
+    """POST /auth/register с уже существующим email → 409.
 
     AUTH-01: уникальность email гарантируется на уровне БД и сервиса.
     """
-    raise NotImplementedError("Реализовать в Plan 02-03: дублирующий email → 409")
+    resp = await client.post(
+        "/auth/register",
+        json={"email": test_user.email, "password": "Str0ng!Passw0rd"},  # type: ignore[attr-defined]
+    )
+    assert resp.status_code == 409
 
 
-@pytest.mark.asyncio
+@pytest.mark.integration
 async def test_register_weak_password(client: AsyncClient) -> None:
-    """POST /auth/register со слабым паролем (< 12 символов / без спецсимволов) должен вернуть 422.
+    """POST /auth/register со слабым паролем → 422 (Pydantic до записи в БД).
 
-    AUTH-01 + D-04: политика пароля валидируется Pydantic-схемой до записи в БД.
+    AUTH-01 + D-04: политика пароля валидируется Pydantic-схемой.
     """
-    raise NotImplementedError("Реализовать в Plan 02-03: слабый пароль → 422")
+    resp = await client.post(
+        "/auth/register", json={"email": "weakpw_0203@example.com", "password": "short"}
+    )
+    assert resp.status_code == 422
 
 
-@pytest.mark.asyncio
-async def test_login_success(client: AsyncClient) -> None:
-    """POST /auth/login с верными credentials должен вернуть access_token и установить refresh cookie.
+@pytest.mark.integration
+async def test_login_success(client: AsyncClient, test_user: object) -> None:
+    """POST /auth/login верные creds → 200 + access_token + HttpOnly refresh-cookie на /auth.
 
     AUTH-02: вход с JWT access 15 мин (HS256) + refresh в HttpOnly cookie.
     """
-    raise NotImplementedError("Реализовать в Plan 02-03: POST /auth/login → JWT + refresh cookie")
-
-
-@pytest.mark.asyncio
-async def test_login_wrong_password(client: AsyncClient) -> None:
-    """POST /auth/login с неверным паролем должен вернуть 401 с единым сообщением 'Invalid credentials'.
-
-    AUTH-02 + anti-enumeration: одно сообщение для несуществующего email и неверного пароля.
-    """
-    raise NotImplementedError(
-        "Реализовать в Plan 02-03: неверный пароль → 401 anti-enumeration"
+    resp = await client.post(
+        "/auth/login",
+        json={"email": test_user.email, "password": "TestPassword1!"},  # type: ignore[attr-defined]
     )
+    assert resp.status_code == 200, resp.text
+    assert resp.json()["access_token"]
+    set_cookie = resp.headers.get("set-cookie", "")
+    assert "HttpOnly" in set_cookie
+    assert "Path=/auth" in set_cookie
 
 
-@pytest.mark.asyncio
-async def test_logout_revokes_token(client: AsyncClient) -> None:
-    """POST /auth/logout должен добавить jti в Redis revocation-set и удалить refresh cookie.
+@pytest.mark.integration
+async def test_login_wrong_password(client: AsyncClient, test_user: object) -> None:
+    """POST /auth/login неверный пароль → 401 'Invalid credentials' (anti-enumeration).
 
-    AUTH-03 (D-08): jti записывается в Redis с TTL = остаток жизни токена; повторный запрос с тем же токеном → 401.
+    AUTH-02: одно сообщение для несуществующего email и неверного пароля.
     """
-    raise NotImplementedError(
-        "Реализовать в Plan 02-03: logout → jti в Redis, повторный запрос → 401"
+    resp = await client.post(
+        "/auth/login",
+        json={"email": test_user.email, "password": "WrongPass1!"},  # type: ignore[attr-defined]
     )
+    assert resp.status_code == 401
+    assert resp.json()["detail"] == "Invalid credentials"
 
 
-@pytest.mark.asyncio
-async def test_refresh_token(client: AsyncClient) -> None:
-    """POST /auth/refresh с валидным refresh cookie должен вернуть новый access_token.
+@pytest.mark.integration
+async def test_logout_revokes_token(auth_client: AsyncClient) -> None:
+    """POST /auth/logout пишет jti в Redis и чистит refresh-cookie; повторный запрос → 401.
+
+    AUTH-03 (D-08): jti с TTL = остаток жизни токена; тот же токен после logout → 401 revoked.
+    """
+    logout = await auth_client.post("/auth/logout")
+    assert logout.status_code == 200, logout.text
+    set_cookie = logout.headers.get("set-cookie", "")
+    assert "refresh_token=" in set_cookie  # delete_cookie выставляет истёкшую cookie
+    revoked = await auth_client.get("/users/me")
+    assert revoked.status_code == 401
+    assert "revoked" in revoked.json()["detail"].lower()
+
+
+@pytest.mark.integration
+async def test_refresh_token(client: AsyncClient, test_user: object) -> None:
+    """POST /auth/refresh с refresh-cookie из login → 200 + новый access_token.
 
     AUTH-04 (D-07): обновление access-токена без повторного логина.
     """
-    raise NotImplementedError("Реализовать в Plan 02-03: refresh cookie → новый access_token")
-
-
-@pytest.mark.asyncio
-async def test_rbac_db_layer(auth_client: AsyncClient) -> None:
-    """Принципал с ролью user, запрашивающий ресурс другого пользователя по чужому id, должен получить 404.
-
-    AUTH-05 (D-12 уровень 2 — DB-layer RBAC, anti-enumeration).
-    """
-    raise NotImplementedError(
-        "Реализовать в Plan 02-03 после owner-scoped helper из Plan 02-02: "
-        "user → 404 при запросе чужого ресурса (anti-enumeration)"
+    login = await client.post(
+        "/auth/login",
+        json={"email": test_user.email, "password": "TestPassword1!"},  # type: ignore[attr-defined]
     )
+    assert login.status_code == 200, login.text
+    resp = await client.post("/auth/refresh")
+    assert resp.status_code == 200, resp.text
+    assert resp.json()["access_token"]
 
 
-@pytest.mark.asyncio
-async def test_get_me(auth_client: AsyncClient) -> None:
-    """GET /users/me должен вернуть профиль текущего пользователя (200).
+@pytest.mark.integration
+async def test_rbac_db_layer(
+    auth_client: AsyncClient, test_user: object, test_admin_user: object
+) -> None:
+    """user-токен на чужой /users/{id} → 404 (DB-layer RBAC, anti-enumeration); свой id → 200.
+
+    AUTH-05 (D-12 уровень 2): owner-scoped get_user_for_principal → None для чужого ресурса → 404.
+    """
+    other = await auth_client.get(f"/users/{test_admin_user.id}")  # type: ignore[attr-defined]
+    assert other.status_code == 404
+    assert test_admin_user.email not in other.text  # type: ignore[attr-defined]
+    own = await auth_client.get(f"/users/{test_user.id}")  # type: ignore[attr-defined]
+    assert own.status_code == 200
+    assert own.json()["email"] == test_user.email  # type: ignore[attr-defined]
+
+
+@pytest.mark.integration
+async def test_get_me(auth_client: AsyncClient, client: AsyncClient, test_user: object) -> None:
+    """GET /users/me → 200 + профиль без password_hash; без Authorization → 401.
 
     AUTH-06 (D-13): просмотр профиля — id, email, role, is_active, created_at.
     """
-    raise NotImplementedError("Реализовать в Plan 02-03: GET /users/me → профиль")
+    no_auth = await client.get("/users/me")
+    assert no_auth.status_code == 401
+    resp = await auth_client.get("/users/me")
+    assert resp.status_code == 200, resp.text
+    data = resp.json()
+    assert data["email"] == test_user.email  # type: ignore[attr-defined]
+    assert data["role"] == "user"
+    assert data["is_active"] is True
+    assert "password_hash" not in data
 
 
-@pytest.mark.asyncio
+@pytest.mark.integration
 async def test_change_password_wrong_current(auth_client: AsyncClient) -> None:
-    """PATCH /users/me/password с неверным current_password должен вернуть 400.
+    """POST /users/me/password с неверным current_password → 400; новый хеш не пишется.
 
-    AUTH-07 (D-05): новый пароль не сохраняется при несовпадении текущего.
+    AUTH-07 (D-05): верификация текущего пароля до записи нового.
     """
-    raise NotImplementedError(
-        "Реализовать в Plan 02-03: неверный current_password → 400, новый хеш не пишется"
+    resp = await auth_client.post(
+        "/users/me/password",
+        json={"current_password": "WrongCurrent1!", "new_password": "NewStr0ng!Pass1"},
     )
+    assert resp.status_code == 400
+    assert "incorrect" in resp.json()["detail"].lower()

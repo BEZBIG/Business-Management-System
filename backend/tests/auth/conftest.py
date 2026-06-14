@@ -1,8 +1,7 @@
-"""Фикстуры pytest для тестов аутентификации: test_user, test_admin_user, auth_client, mock_redis_jti."""
+"""Фикстуры pytest для auth-тестов: test_user, test_admin_user, auth_client, mock_redis_jti."""
 
 from __future__ import annotations
 
-import os
 from collections.abc import AsyncGenerator
 from unittest.mock import AsyncMock
 
@@ -14,6 +13,7 @@ try:
     from app.auth.models import User, UserRole  # noqa: PLC0415
     from app.auth.security import create_access_token  # noqa: PLC0415
     from app.main import app  # noqa: PLC0415
+
     _AUTH_AVAILABLE = True
 except ModuleNotFoundError:
     _AUTH_AVAILABLE = False
@@ -37,9 +37,7 @@ async def test_user(async_engine: AsyncEngine) -> AsyncGenerator[User, None]:
 
     from pwdlib import PasswordHash  # noqa: PLC0415
     from pwdlib.hashers.argon2 import Argon2Hasher  # noqa: PLC0415
-    from sqlalchemy import delete, text  # noqa: PLC0415
-
-    from app.db.base import Base  # noqa: PLC0415
+    from sqlalchemy import delete  # noqa: PLC0415
 
     hasher = PasswordHash((Argon2Hasher(),))
     password_hash = hasher.hash("TestPassword1!")
@@ -59,9 +57,7 @@ async def test_user(async_engine: AsyncEngine) -> AsyncGenerator[User, None]:
     yield user  # type: ignore[misc]
 
     async with AsyncSession(async_engine) as session:
-        await session.execute(
-            delete(User).where(User.id == user_id)
-        )
+        await session.execute(delete(User).where(User.id == user_id))
         await session.commit()
 
 
@@ -94,9 +90,7 @@ async def test_admin_user(async_engine: AsyncEngine) -> AsyncGenerator[User, Non
     yield admin  # type: ignore[misc]
 
     async with AsyncSession(async_engine) as session:
-        await session.execute(
-            delete(User).where(User.id == admin_id)
-        )
+        await session.execute(delete(User).where(User.id == admin_id))
         await session.commit()
 
 

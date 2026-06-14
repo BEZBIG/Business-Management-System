@@ -42,7 +42,15 @@ class User(Base, TimestampMixin):
         nullable=False,
     )
     role: Mapped[UserRole] = mapped_column(
-        Enum(UserRole, name="user_role", create_type=True),
+        # values_callable: биндить .value (lowercase 'user'/'manager'/'admin'), а не
+        # имя члена enum ('USER') — иначе INSERT падает на native PG enum user_role,
+        # значения которого создаются миграцией 0002 в нижнем регистре (Rule 1 — bug).
+        Enum(
+            UserRole,
+            name="user_role",
+            create_type=False,
+            values_callable=lambda enum_cls: [member.value for member in enum_cls],
+        ),
         nullable=False,
         default=UserRole.USER,
         server_default="user",

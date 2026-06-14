@@ -41,9 +41,7 @@ async def create_user(session: AsyncSession, email: str, password: str) -> User:
     return user
 
 
-async def authenticate_user(
-    session: AsyncSession, email: str, password: str
-) -> User | None:
+async def authenticate_user(session: AsyncSession, email: str, password: str) -> User | None:
     """Аутентифицирует пользователя. Единый None при любой ошибке (anti-enumeration, T-02-07).
 
     Не раскрывает, существует ли пользователь с таким email.

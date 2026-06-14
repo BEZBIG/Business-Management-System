@@ -12,9 +12,7 @@ async def test_admin_redirect_unauthenticated(client: AsyncClient) -> None:
 
     ADMIN-01 (D-14): SQLAdmin AuthenticationBackend защищает все /admin/* маршруты.
     """
-    raise NotImplementedError(
-        "Реализовать в Plan 02-04: GET /admin/ без сессии → redirect 302/307"
-    )
+    raise NotImplementedError("Реализовать в Plan 02-04: GET /admin/ без сессии → redirect 302/307")
 
 
 @pytest.mark.asyncio
@@ -23,6 +21,4 @@ async def test_admin_login_non_admin(client: AsyncClient) -> None:
 
     ADMIN-01 (D-14): AuthenticationBackend.login() проверяет role==admin; role=user отклоняется.
     """
-    raise NotImplementedError(
-        "Реализовать в Plan 02-04: non-admin user → вход в SQLAdmin отклонён"
-    )
+    raise NotImplementedError("Реализовать в Plan 02-04: non-admin user → вход в SQLAdmin отклонён")

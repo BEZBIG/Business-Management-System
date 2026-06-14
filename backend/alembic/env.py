@@ -18,6 +18,7 @@ if config.config_file_name is not None:
 
 from app.core.config import settings  # noqa: E402
 from app.db.base import Base  # noqa: E402
+from app.auth.models import User  # noqa: E402, F401
 
 target_metadata = Base.metadata
 

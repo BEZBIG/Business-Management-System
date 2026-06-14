@@ -39,7 +39,6 @@ async def test_broker_reconnect() -> None:
     try:
         await broker.start()
         await asyncio.sleep(1.0)
-        assert broker.connection is not None, "Broker did not establish a connection"
-        assert not broker.connection.is_closed, "Broker connection is closed after start()"
+        assert await broker.ping(timeout=3.0), "Broker did not reconnect after start()"
     finally:
         await broker.stop()

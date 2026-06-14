@@ -68,18 +68,17 @@ def mock_redis_down() -> AsyncMock:
 
 @pytest.fixture
 def mock_broker_ok() -> MagicMock:
-    """Мок RabbitBroker в состоянии «подключён»."""
+    """Мок RabbitBroker, чей ping() успешен."""
     mock = MagicMock()
-    mock.connection = MagicMock()
-    mock.connection.is_closed = False
+    mock.ping = AsyncMock(return_value=True)
     return mock
 
 
 @pytest.fixture
 def mock_broker_down() -> MagicMock:
-    """Мок RabbitBroker в состоянии «не подключён»."""
+    """Мок RabbitBroker, чей ping() возвращает False."""
     mock = MagicMock()
-    mock.connection = None
+    mock.ping = AsyncMock(return_value=False)
     return mock
 
 

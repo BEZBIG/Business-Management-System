@@ -40,7 +40,7 @@ async def readiness(
         checks["redis"] = "error"
 
     try:
-        if broker.connection is not None and not broker.connection.is_closed:  # type: ignore[attr-defined]
+        if await broker.ping(timeout=2.0):
             checks["rabbitmq"] = "ok"
         else:
             checks["rabbitmq"] = "error"

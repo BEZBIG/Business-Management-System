@@ -11,6 +11,7 @@ from app.core.logging import setup_logging
 
 setup_logging()
 
+from app.admin.setup import setup_admin  # noqa: E402
 from app.auth.router import router as auth_router  # noqa: E402
 from app.auth.router import users_router  # noqa: E402
 from app.auth.service import seed_first_superuser  # noqa: E402
@@ -55,3 +56,5 @@ app.add_middleware(RequestIDMiddleware)
 app.include_router(health_router)
 app.include_router(auth_router)
 app.include_router(users_router)
+
+setup_admin(app, engine)

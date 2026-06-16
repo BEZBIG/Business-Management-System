@@ -25,7 +25,7 @@ depends_on: str | Sequence[str] | None = None
 
 def upgrade() -> None:
     """Создаёт native enum user_role и таблицу users."""
-    # 1. Создать native PG enum type с checkfirst — безопасно при повторном запуске (Pitfall 3)
+    # 1. Создать native PG enum type с checkfirst — безопасно при повторном запуске
     user_role_enum = postgresql.ENUM(
         "user",
         "manager",
@@ -69,7 +69,7 @@ def upgrade() -> None:
         ),
     )
 
-    # 3. Уникальный индекс на email (D-02)
+    # 3. Уникальный индекс на email
     op.create_index("ix_users_email", "users", ["email"], unique=True)
 
 

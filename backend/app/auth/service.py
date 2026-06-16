@@ -1,7 +1,7 @@
 """Бизнес-логика домена аутентификации: регистрация, вход, смена пароля, seed admin.
 
 Все функции принимают AsyncSession и не коммитят — commit делает get_async_session/lifespan.
-RBAC уровень 2 (D-12): get_user_for_principal реализует owner-scoped DB-query фильтр.
+RBAC уровень 2: get_user_for_principal реализует owner-scoped фильтр на уровне запроса к БД.
 """
 
 from __future__ import annotations
@@ -24,7 +24,7 @@ async def get_user_by_email(session: AsyncSession, email: str) -> User | None:
 
 
 async def create_user(session: AsyncSession, email: str, password: str) -> User:
-    """Регистрирует нового пользователя с ролью USER (D-10).
+    """Регистрирует нового пользователя с ролью USER.
 
     Хеширует пароль через Argon2id-синглтон. flush() обеспечивает id до commit.
     Проверку уникальности email делает вызывающий роутер (409).
@@ -33,7 +33,7 @@ async def create_user(session: AsyncSession, email: str, password: str) -> User:
     user = User(
         email=email,
         password_hash=hashed,
-        role=UserRole.USER,  # роль всегда назначается сервером (D-10, T-02-08)
+        role=UserRole.USER,  # роль всегда назначается сервером
     )
     session.add(user)
     await session.flush()  # получить user.id до commit
@@ -42,7 +42,7 @@ async def create_user(session: AsyncSession, email: str, password: str) -> User:
 
 
 async def authenticate_user(session: AsyncSession, email: str, password: str) -> User | None:
-    """Аутентифицирует пользователя. Единый None при любой ошибке (anti-enumeration, T-02-07).
+    """Аутентифицирует пользователя. Единый None при любой ошибке (анти-энумерация).
 
     Не раскрывает, существует ли пользователь с таким email.
     """
@@ -57,7 +57,7 @@ async def authenticate_user(session: AsyncSession, email: str, password: str) ->
 async def change_password(
     session: AsyncSession, user: User, current_password: str, new_password: str
 ) -> bool:
-    """Меняет пароль пользователя после верификации текущего (D-05).
+    """Меняет пароль пользователя после верификации текущего.
 
     Возвращает False при несовпадении current_password; хеш не пишется.
     Возвращает True при успешной смене.
@@ -71,7 +71,7 @@ async def change_password(
 
 
 async def seed_first_superuser(session: AsyncSession) -> None:
-    """Идемпотентно создаёт первого admin из env-переменных (D-11).
+    """Идемпотентно создаёт первого admin из env-переменных.
 
     Не создаёт дубликат при существующем email. Не вызывается, если email пустой.
     """
@@ -96,14 +96,14 @@ async def get_user_for_principal(
     target_user_id: object,
     principal: User,
 ) -> User | None:
-    """DB-query-level RBAC: owner-scoped фильтр (D-12 уровень 2, T-02-22).
+    """RBAC на уровне запроса к БД: owner-scoped фильтр.
 
     - admin → возвращает любую строку (полный доступ).
     - user/manager → возвращает строку ТОЛЬКО если target_user_id == principal.id,
       иначе None (анти-энумерация: вызывающий отдаёт 404, не 403).
 
     None = нет доступа; вызывающий отдаёт 404 (не 403), чтобы не раскрывать
-    существование чужого ресурса (anti-enumeration, T-02-22).
+    существование чужого ресурса (анти-энумерация).
     """
     if principal.role == UserRole.ADMIN:
         # admin видит всех пользователей

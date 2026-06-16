@@ -1,7 +1,7 @@
 """Pydantic-схемы для домена аутентификации: запросы и ответы.
 
-Строгая валидация пароля (D-04): минимум 12 символов + верхний/нижний регистр + цифра + спецсимвол.
-password_hash намеренно исключён из всех ответных схем (T-02-09).
+Строгая валидация пароля: минимум 12 символов + верхний/нижний регистр + цифра + спецсимвол.
+password_hash намеренно исключён из всех ответных схем.
 """
 
 from __future__ import annotations
@@ -13,14 +13,14 @@ from typing import Annotated
 
 from pydantic import BaseModel, EmailStr, Field, field_validator
 
-# Политика пароля D-04: ≥12 символов, обязательны a-z, A-Z, 0-9, спецсимвол.
+# Политика пароля: ≥12 символов, обязательны a-z, A-Z, 0-9, спецсимвол.
 PASSWORD_PATTERN = re.compile(
     r"^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[!@#$%^&*()\-_=+\[\]{};':\"\\|,.<>/?`~]).{12,}$"
 )
 
 
 def _validate_password_strength(v: str) -> str:
-    """Проверяет соответствие пароля политике D-04."""
+    """Проверяет соответствие пароля политике сложности."""
     if not PASSWORD_PATTERN.match(v):
         raise ValueError(
             "Password must be at least 12 characters and contain uppercase, "
@@ -30,7 +30,7 @@ def _validate_password_strength(v: str) -> str:
 
 
 class RegisterRequest(BaseModel):
-    """Запрос регистрации нового пользователя. Роль задаётся сервером (D-10)."""
+    """Запрос регистрации нового пользователя. Роль задаётся сервером."""
 
     email: EmailStr
     password: Annotated[str, Field(min_length=12)]
@@ -38,7 +38,7 @@ class RegisterRequest(BaseModel):
     @field_validator("password")
     @classmethod
     def validate_password_strength(cls, v: str) -> str:
-        """Валидирует сложность пароля по политике D-04."""
+        """Валидирует сложность пароля по политике."""
         return _validate_password_strength(v)
 
 
@@ -57,7 +57,7 @@ class LoginResponse(BaseModel):
 
 
 class UserMeResponse(BaseModel):
-    """Профиль текущего пользователя. Без password_hash (T-02-09)."""
+    """Профиль текущего пользователя. Без password_hash."""
 
     id: uuid.UUID
     email: str
@@ -69,13 +69,13 @@ class UserMeResponse(BaseModel):
 
 
 class UserUpdateRequest(BaseModel):
-    """Обновление профиля пользователя. Роль клиент не задаёт (D-10)."""
+    """Обновление профиля пользователя. Роль клиент не задаёт."""
 
     email: EmailStr | None = None
 
 
 class PasswordChangeRequest(BaseModel):
-    """Запрос смены пароля. Требует верификации текущего пароля (D-05)."""
+    """Запрос смены пароля. Требует верификации текущего пароля."""
 
     current_password: str
     new_password: Annotated[str, Field(min_length=12)]
@@ -83,5 +83,5 @@ class PasswordChangeRequest(BaseModel):
     @field_validator("new_password")
     @classmethod
     def validate_new_password_strength(cls, v: str) -> str:
-        """Валидирует новый пароль по политике D-04."""
+        """Валидирует новый пароль по политике сложности."""
         return _validate_password_strength(v)

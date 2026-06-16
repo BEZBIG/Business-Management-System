@@ -1,4 +1,4 @@
-"""Тесты SQLAdmin панели: auth-gate, redirect, non-admin rejection (ADMIN-01)."""
+"""Тесты SQLAdmin панели: auth-gate, redirect, отклонение не-admin."""
 
 from __future__ import annotations
 
@@ -15,7 +15,7 @@ from app.auth.models import User, UserRole
 async def test_admin_redirect_unauthenticated() -> None:
     """GET /admin/ без авторизации должен вернуть редирект на страницу логина (302/307).
 
-    ADMIN-01 (D-14): SQLAdmin AuthenticationBackend защищает все /admin/* маршруты.
+    SQLAdmin AuthenticationBackend защищает все /admin/* маршруты.
     Клиент создаётся без сессионного cookie — имитирует анонимный браузер.
     """
     from app.main import app  # noqa: PLC0415
@@ -36,7 +36,7 @@ async def test_admin_redirect_unauthenticated() -> None:
 async def test_admin_login_non_admin() -> None:
     """AdminAuthBackend.login() с пользователем role=user должен вернуть False.
 
-    ADMIN-01 (D-14): AuthenticationBackend.login() проверяет role==admin;
+    AuthenticationBackend.login() проверяет role==admin;
     role=user отклоняется без создания сессии.
     """
     # Создаём user-роль пользователя (активен, пароль верный, но не admin)

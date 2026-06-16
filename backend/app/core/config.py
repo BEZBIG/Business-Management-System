@@ -23,16 +23,16 @@ class Settings(BaseSettings):
 
     rabbitmq_url: str
 
-    # JWT (D-06/D-07)
+    # JWT
     jwt_secret: str  # обязательное, без default — из env
     access_token_ttl: int = 900  # 15 минут в секундах
     refresh_token_ttl: int = 604800  # 7 дней в секундах
 
-    # Первый суперпользователь — идемпотентный seed в lifespan (D-11)
+    # Первый суперпользователь — идемпотентный seed в lifespan
     first_superuser_email: str = ""
     first_superuser_password: str = ""  # noqa: S105
 
-    # SQLAdmin session signing через itsdangerous (D-14)
+    # Подпись сессионных cookie SQLAdmin через itsdangerous
     admin_session_secret: str  # обязательное, без default — из env
 
 

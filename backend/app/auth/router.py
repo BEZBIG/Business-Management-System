@@ -1,8 +1,8 @@
 """HTTP-слой аутентификации: /auth/* (register/login/refresh/logout) и /users/* (профиль, RBAC).
 
-Тонкие обработчики: вызывают service.py, ставят/чистят refresh-cookie (D-07, HttpOnly+SameSite,
-scoped на /auth) и отзывают access-токен через Redis на logout (D-08). Два роутера в одном
-модуле (W2): router (/auth/*) и users_router (/users/*) — оба экспортируются.
+Тонкие обработчики: вызывают service.py, ставят/чистят refresh-cookie (HttpOnly+SameSite,
+scoped на /auth) и отзывают access-токен через Redis на logout. Два роутера в одном
+модуле: router (/auth/*) и users_router (/users/*) — оба экспортируются.
 """
 
 from __future__ import annotations
@@ -54,7 +54,7 @@ REFRESH_COOKIE_PATH = "/auth"
 
 
 def _to_me_response(user: User) -> UserMeResponse:
-    """Строит UserMeResponse из ORM-User без password_hash (T-02-09).
+    """Строит UserMeResponse из ORM-User без password_hash.
 
     role.value (str) передаётся явно — UserRole(enum.Enum) не str-enum, поэтому
     model_validate не сериализует его в строковое поле role.
@@ -69,7 +69,7 @@ def _to_me_response(user: User) -> UserMeResponse:
 
 
 def _set_refresh_cookie(response: JSONResponse, token: str) -> None:
-    """Ставит refresh-токен в HttpOnly+SameSite cookie, scoped на /auth (D-07, T-02-11/12)."""
+    """Ставит refresh-токен в HttpOnly+SameSite cookie, scoped на /auth."""
     response.set_cookie(
         key=REFRESH_COOKIE_NAME,
         value=token,
@@ -108,7 +108,7 @@ async def login(
 ) -> JSONResponse:
     """Вход по кредам → access token + refresh-cookie; ошибка → 401 'Invalid credentials'.
 
-    Единое сообщение для неверного email И пароля — anti-enumeration (T-02-14).
+    Единое сообщение для неверного email И пароля — анти-энумерация.
     """
     user = await authenticate_user(session, data.email, data.password)
     if user is None:
@@ -126,7 +126,7 @@ async def refresh(
     refresh_token: str | None = Cookie(default=None),
     session: AsyncSession = Depends(get_async_session),  # noqa: B008
 ) -> LoginResponse:
-    """Выдаёт новый access token по refresh-cookie без повторного логина (AUTH-04, D-07)."""
+    """Выдаёт новый access token по refresh-cookie без повторного логина."""
     if refresh_token is None:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED, detail="Missing refresh token"
@@ -157,7 +157,7 @@ async def logout(
     credentials: HTTPAuthorizationCredentials | None = Depends(bearer_scheme),  # noqa: B008
     current_user: User = Depends(get_current_user),  # noqa: B008
 ) -> JSONResponse:
-    """Отзывает access-токен (jti → Redis с TTL остатка) и чистит refresh-cookie (AUTH-03, D-08)."""
+    """Отзывает access-токен (jti → Redis с TTL остатка) и чистит refresh-cookie."""
     if credentials is None:  # недостижимо — get_current_user уже потребовал токен
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Not authenticated")
     payload = decode_access_token(credentials.credentials)
@@ -177,7 +177,7 @@ async def logout(
 async def get_me(
     current_user: User = Depends(get_current_user),  # noqa: B008
 ) -> UserMeResponse:
-    """Возвращает профиль текущего пользователя (AUTH-06, D-13)."""
+    """Возвращает профиль текущего пользователя."""
     return _to_me_response(current_user)
 
 
@@ -187,7 +187,7 @@ async def update_me(
     current_user: User = Depends(get_current_user),  # noqa: B008
     session: AsyncSession = Depends(get_async_session),  # noqa: B008
 ) -> UserMeResponse:
-    """Обновляет профиль (email); role/is_active клиентом не меняются (D-10/D-13)."""
+    """Обновляет профиль (email); role/is_active клиентом не меняются."""
     if data.email is not None:
         current_user.email = data.email
     await session.flush()
@@ -200,7 +200,7 @@ async def change_my_password(
     current_user: User = Depends(get_current_user),  # noqa: B008
     session: AsyncSession = Depends(get_async_session),  # noqa: B008
 ) -> dict[str, str]:
-    """Меняет пароль после верификации текущего; неверный current → 400 (AUTH-07, D-05)."""
+    """Меняет пароль после верификации текущего; неверный current → 400."""
     ok = await change_password(session, current_user, data.current_password, data.new_password)
     if not ok:
         raise HTTPException(
@@ -216,10 +216,10 @@ async def get_user_by_id(
     current_user: User = Depends(get_current_user),  # noqa: B008
     session: AsyncSession = Depends(get_async_session),  # noqa: B008
 ) -> UserMeResponse:
-    """Owner-scoped чтение профиля (AUTH-05, D-12 ур.2): чужой id для user-роли → 404.
+    """Owner-scoped чтение профиля: чужой id для user-роли → 404.
 
     get_user_for_principal возвращает None для чужого ресурса → 404 (не 403) —
-    anti-enumeration существования (T-02-23).
+    анти-энумерация существования ресурса.
     """
     target = await get_user_for_principal(session, user_id, current_user)
     if target is None:

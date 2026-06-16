@@ -1,7 +1,7 @@
 """FastAPI-зависимости аутентификации и авторизации.
 
-get_current_user: проверяет подпись JWT, exp, type, jti-ревокацию, is_active (D-08).
-require_role: фабрика route-level RBAC зависимостей (D-12 уровень 1).
+get_current_user: проверяет подпись JWT, exp, type, jti-ревокацию, is_active.
+require_role: фабрика зависимостей RBAC на уровне маршрутов.
 """
 
 from __future__ import annotations
@@ -30,7 +30,7 @@ async def get_current_user(
     1. Наличие Authorization заголовка → 401
     2. Подпись JWT и exp → 401 "Token expired" / "Invalid token"
     3. type == "access" → 401 "Invalid token type"
-    4. jti в Redis revocation-set → 401 "Token revoked" (D-08, T-02-05)
+    4. jti в Redis revocation-set → 401 "Token revoked"
     5. Пользователь существует и is_active → 401
     """
     if credentials is None:
@@ -60,7 +60,7 @@ async def get_current_user(
 
 
 def require_role(*roles: str):  # type: ignore[no-untyped-def]
-    """Фабрика route-level RBAC зависимостей (D-12 уровень 1).
+    """Фабрика зависимостей RBAC на уровне маршрутов.
 
     Использование:
         @router.get("/admin", dependencies=[Depends(require_role("admin"))])

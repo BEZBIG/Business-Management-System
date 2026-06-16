@@ -15,11 +15,11 @@ from pwdlib.hashers.argon2 import Argon2Hasher
 
 from app.core.config import settings
 
-# Синглтон — явный конструктор, детерминирован и тестируем (D-03).
-# НЕ использовать PasswordHash.recommended() — создаёт свежий объект без контроля (Anti-pattern).
+# Синглтон — явный конструктор, детерминирован и тестируем.
+# НЕ использовать PasswordHash.recommended() — создаёт свежий объект без контроля над хешером.
 password_hasher = PasswordHash((Argon2Hasher(),))
 
-# Алгоритм подписи JWT (D-06). Всегда список при decode — защита от algorithm confusion (T-02-04).
+# Алгоритм подписи JWT. Всегда список при decode — защита от подмены алгоритма.
 ALGORITHM = "HS256"
 
 
@@ -36,8 +36,8 @@ def verify_password(plain_password: str, hashed_password: str) -> bool:
 def create_access_token(sub: str, role: str) -> str:
     """Создаёт JWT access-токен (HS256, 15 мин).
 
-    Claims: sub, role, jti (uuid4.hex), iat, exp, type="access" (D-06).
-    Секрет берётся только из settings.jwt_secret (никогда в коде — D-06).
+    Claims: sub, role, jti (uuid4.hex), iat, exp, type="access".
+    Секрет берётся только из settings.jwt_secret (никогда не хранится в коде).
     """
     now = datetime.now(UTC)
     payload = {
@@ -54,7 +54,7 @@ def create_access_token(sub: str, role: str) -> str:
 def decode_access_token(token: str) -> dict[str, object]:
     """Декодирует и верифицирует JWT access-токен.
 
-    ОБЯЗАТЕЛЬНО список algorithms=[ALGORITHM] — защита от algorithm confusion (Pitfall 2, T-02-04).
+    ОБЯЗАТЕЛЬНО список algorithms=[ALGORITHM] — защита от подмены алгоритма.
     Бросает jwt.ExpiredSignatureError при истёкшем exp, jwt.InvalidTokenError при иных ошибках.
     """
     return jwt.decode(token, settings.jwt_secret, algorithms=[ALGORITHM])
@@ -63,7 +63,7 @@ def decode_access_token(token: str) -> dict[str, object]:
 def create_refresh_token(sub: str) -> str:
     """Создаёт JWT refresh-токен (HS256, 7 дней).
 
-    Claims: sub, jti, iat, exp, type="refresh" (D-07). Роль в refresh не включается.
+    Claims: sub, jti, iat, exp, type="refresh". Роль в refresh не включается.
     """
     now = datetime.now(UTC)
     payload = {

@@ -27,7 +27,7 @@ from app.metrics.setup import setup_metrics  # noqa: E402
 async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     """Управляет запуском и остановкой async-подключений: брокер, Redis, пул БД.
 
-    После старта брокера идемпотентно создаёт первого admin из env (D-11).
+    После старта брокера идемпотентно создаёт первого admin из env.
     """
     await broker.start()
 

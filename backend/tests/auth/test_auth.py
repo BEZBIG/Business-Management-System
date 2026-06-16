@@ -1,7 +1,7 @@
 """Тесты аутентификации и RBAC.
 
-Unit-тесты security/schemas/service/dependencies (Plan 02-02) и
-HTTP endpoint-стабы (реализуются в Plan 02-03).
+Unit-тесты модулей security/schemas/service/dependencies и
+интеграционные тесты HTTP-эндпоинтов.
 """
 
 from __future__ import annotations
@@ -15,7 +15,7 @@ from httpx import AsyncClient
 from pydantic import ValidationError
 
 # ---------------------------------------------------------------------------
-# Task 1: security.py — unit-тесты (password hash/verify + JWT encode/decode)
+# security.py — unit-тесты (хеширование/проверка пароля + JWT encode/decode)
 # ---------------------------------------------------------------------------
 
 
@@ -41,7 +41,7 @@ def test_access_token_claims() -> None:
 
 
 def test_token_wrong_secret_raises() -> None:
-    """decode_access_token с другим секретом бросает jwt.InvalidTokenError (T-02-04)."""
+    """decode_access_token с другим секретом бросает jwt.InvalidTokenError."""
     from app.auth.security import ALGORITHM, create_access_token
 
     token = create_access_token("u1", "user")
@@ -82,12 +82,12 @@ def test_refresh_token_type() -> None:
 
 
 # ---------------------------------------------------------------------------
-# Task 2: schemas.py — unit-тесты валидации пароля и UserMeResponse
+# schemas.py — unit-тесты валидации пароля и UserMeResponse
 # ---------------------------------------------------------------------------
 
 
 def test_register_request_short_password() -> None:
-    """RegisterRequest с паролем < 12 символов → ValidationError (D-04)."""
+    """RegisterRequest с паролем < 12 символов → ValidationError."""
     from app.auth.schemas import RegisterRequest
 
     with pytest.raises(ValidationError):
@@ -95,7 +95,7 @@ def test_register_request_short_password() -> None:
 
 
 def test_register_request_no_uppercase() -> None:
-    """RegisterRequest без верхнего регистра → ValidationError (D-04)."""
+    """RegisterRequest без верхнего регистра → ValidationError."""
     from app.auth.schemas import RegisterRequest
 
     with pytest.raises(ValidationError):
@@ -103,7 +103,7 @@ def test_register_request_no_uppercase() -> None:
 
 
 def test_register_request_no_digit() -> None:
-    """RegisterRequest без цифры → ValidationError (D-04)."""
+    """RegisterRequest без цифры → ValidationError."""
     from app.auth.schemas import RegisterRequest
 
     with pytest.raises(ValidationError):
@@ -111,7 +111,7 @@ def test_register_request_no_digit() -> None:
 
 
 def test_register_request_no_special() -> None:
-    """RegisterRequest без спецсимвола → ValidationError (D-04)."""
+    """RegisterRequest без спецсимвола → ValidationError."""
     from app.auth.schemas import RegisterRequest
 
     with pytest.raises(ValidationError):
@@ -128,7 +128,7 @@ def test_register_request_valid() -> None:
 
 
 def test_user_me_response_no_password_hash() -> None:
-    """UserMeResponse не содержит поля password_hash (T-02-09)."""
+    """UserMeResponse не содержит поля password_hash."""
     import datetime
 
     from app.auth.schemas import UserMeResponse
@@ -145,7 +145,7 @@ def test_user_me_response_no_password_hash() -> None:
 
 
 def test_password_change_request_validates_new_password() -> None:
-    """PasswordChangeRequest валидирует new_password (D-04/D-05)."""
+    """PasswordChangeRequest валидирует new_password."""
     from app.auth.schemas import PasswordChangeRequest
 
     with pytest.raises(ValidationError):
@@ -159,13 +159,13 @@ def test_password_change_request_validates_new_password() -> None:
 
 
 # ---------------------------------------------------------------------------
-# Task 2: service.py — unit-тесты (mock-based, без реальной БД)
+# service.py — unit-тесты (на моках, без реальной БД)
 # ---------------------------------------------------------------------------
 
 
 @pytest.mark.asyncio
 async def test_authenticate_user_returns_none_on_wrong_password() -> None:
-    """authenticate_user возвращает None при неверном пароле (anti-enumeration, T-02-07)."""
+    """authenticate_user возвращает None при неверном пароле (анти-энумерация)."""
     from unittest.mock import AsyncMock
 
     from app.auth.models import User, UserRole
@@ -201,7 +201,7 @@ async def test_authenticate_user_returns_none_for_unknown_email() -> None:
 
 @pytest.mark.asyncio
 async def test_create_user_assigns_role_user() -> None:
-    """create_user всегда назначает role=USER на сервере (D-10, T-02-08)."""
+    """create_user всегда назначает role=USER на сервере."""
     from unittest.mock import AsyncMock
 
     from app.auth.models import UserRole
@@ -229,7 +229,7 @@ async def test_create_user_assigns_role_user() -> None:
 
 @pytest.mark.asyncio
 async def test_change_password_wrong_current_returns_false() -> None:
-    """change_password при неверном current_password → False; хеш не меняется (D-05)."""
+    """change_password при неверном current_password → False; хеш не меняется."""
     from app.auth.models import User, UserRole
     from app.auth.security import password_hasher
     from app.auth.service import change_password
@@ -252,7 +252,7 @@ async def test_change_password_wrong_current_returns_false() -> None:
 
 @pytest.mark.asyncio
 async def test_seed_first_superuser_idempotent() -> None:
-    """seed_first_superuser не создаёт дубликат, если пользователь уже существует (D-11)."""
+    """seed_first_superuser не создаёт дубликат, если пользователь уже существует."""
     from app.auth.models import User, UserRole
     from app.auth.service import seed_first_superuser
 
@@ -277,13 +277,13 @@ async def test_seed_first_superuser_idempotent() -> None:
 
 
 # ---------------------------------------------------------------------------
-# Task 2: service.py — DB-layer RBAC get_user_for_principal (D-12 уровень 2)
+# service.py — RBAC на уровне БД: get_user_for_principal
 # ---------------------------------------------------------------------------
 
 
 @pytest.mark.asyncio
 async def test_db_layer_principal_user_cannot_access_other() -> None:
-    """get_user_for_principal: user-принципал с чужим target_id → None (D-12 уровень 2, T-02-22)."""
+    """get_user_for_principal: user-принципал с чужим target_id → None."""
     from app.auth.models import User, UserRole
     from app.auth.service import get_user_for_principal
 
@@ -337,7 +337,7 @@ async def test_db_layer_admin_can_access_any() -> None:
 
 
 # ---------------------------------------------------------------------------
-# Task 3: dependencies.py — unit-тесты get_current_user + require_role
+# dependencies.py — unit-тесты get_current_user + require_role
 # ---------------------------------------------------------------------------
 
 
@@ -403,7 +403,7 @@ async def test_current_user_refresh_token_rejected() -> None:
 
 @pytest.mark.asyncio
 async def test_current_user_revoked_jti() -> None:
-    """get_current_user с отозванным jti (redis exists → 1) → 401 'Token revoked' (D-08)."""
+    """get_current_user с отозванным jti (redis exists → 1) → 401 'Token revoked'."""
     from types import SimpleNamespace
 
     from fastapi import HTTPException
@@ -453,7 +453,7 @@ async def test_current_user_valid_token_returns_user() -> None:
 
 @pytest.mark.asyncio
 async def test_rbac_user_forbidden() -> None:
-    """require_role('admin') для user-роли → 403 (D-12 уровень 1, T-02-22)."""
+    """require_role('admin') для user-роли → 403."""
     from fastapi import HTTPException
 
     from app.auth.dependencies import require_role
@@ -471,9 +471,9 @@ async def test_rbac_user_forbidden() -> None:
 
 
 # ---------------------------------------------------------------------------
-# Plan 02-03: HTTP endpoint-тесты (интеграционные — требуют живой БД + Redis).
-# Помечены @pytest.mark.integration (project convention: tests requiring Docker
-# infrastructure); исключаются из CI `-m "not integration"`, запускаются в Docker.
+# HTTP endpoint-тесты (интеграционные — требуют живой БД + Redis).
+# Помечены @pytest.mark.integration (соглашение проекта: тесты, которым нужна
+# Docker-инфраструктура); исключаются из CI `-m "not integration"`, запускаются в Docker.
 # ---------------------------------------------------------------------------
 
 
@@ -481,7 +481,7 @@ async def test_rbac_user_forbidden() -> None:
 async def test_register_success(client: AsyncClient) -> None:
     """POST /auth/register с валидными данными → 201 + access_token + HttpOnly refresh-cookie.
 
-    AUTH-01: регистрация нового пользователя с уникальным email и сильным паролем.
+    Регистрация нового пользователя с уникальным email и сильным паролем.
     """
     from sqlalchemy import delete
     from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
@@ -514,7 +514,7 @@ async def test_register_success(client: AsyncClient) -> None:
 async def test_register_duplicate_email(client: AsyncClient, test_user: object) -> None:
     """POST /auth/register с уже существующим email → 409.
 
-    AUTH-01: уникальность email гарантируется на уровне БД и сервиса.
+    Уникальность email гарантируется на уровне БД и сервиса.
     """
     resp = await client.post(
         "/auth/register",
@@ -527,7 +527,7 @@ async def test_register_duplicate_email(client: AsyncClient, test_user: object) 
 async def test_register_weak_password(client: AsyncClient) -> None:
     """POST /auth/register со слабым паролем → 422 (Pydantic до записи в БД).
 
-    AUTH-01 + D-04: политика пароля валидируется Pydantic-схемой.
+    Политика пароля валидируется Pydantic-схемой.
     """
     resp = await client.post(
         "/auth/register", json={"email": "weakpw_0203@example.com", "password": "short"}
@@ -539,7 +539,7 @@ async def test_register_weak_password(client: AsyncClient) -> None:
 async def test_login_success(client: AsyncClient, test_user: object) -> None:
     """POST /auth/login верные creds → 200 + access_token + HttpOnly refresh-cookie на /auth.
 
-    AUTH-02: вход с JWT access 15 мин (HS256) + refresh в HttpOnly cookie.
+    Вход с JWT access 15 мин (HS256) + refresh в HttpOnly cookie.
     """
     resp = await client.post(
         "/auth/login",
@@ -554,9 +554,9 @@ async def test_login_success(client: AsyncClient, test_user: object) -> None:
 
 @pytest.mark.integration
 async def test_login_wrong_password(client: AsyncClient, test_user: object) -> None:
-    """POST /auth/login неверный пароль → 401 'Invalid credentials' (anti-enumeration).
+    """POST /auth/login неверный пароль → 401 'Invalid credentials' (анти-энумерация).
 
-    AUTH-02: одно сообщение для несуществующего email и неверного пароля.
+    Одно сообщение для несуществующего email и неверного пароля.
     """
     resp = await client.post(
         "/auth/login",
@@ -570,7 +570,7 @@ async def test_login_wrong_password(client: AsyncClient, test_user: object) -> N
 async def test_logout_revokes_token(auth_client: AsyncClient) -> None:
     """POST /auth/logout пишет jti в Redis и чистит refresh-cookie; повторный запрос → 401.
 
-    AUTH-03 (D-08): jti с TTL = остаток жизни токена; тот же токен после logout → 401 revoked.
+    jti с TTL = остаток жизни токена; тот же токен после logout → 401 revoked.
     """
     logout = await auth_client.post("/auth/logout")
     assert logout.status_code == 200, logout.text
@@ -585,7 +585,7 @@ async def test_logout_revokes_token(auth_client: AsyncClient) -> None:
 async def test_refresh_token(client: AsyncClient, test_user: object) -> None:
     """POST /auth/refresh с refresh-cookie из login → 200 + новый access_token.
 
-    AUTH-04 (D-07): обновление access-токена без повторного логина.
+    Обновление access-токена без повторного логина.
     """
     login = await client.post(
         "/auth/login",
@@ -601,9 +601,9 @@ async def test_refresh_token(client: AsyncClient, test_user: object) -> None:
 async def test_rbac_db_layer(
     auth_client: AsyncClient, test_user: object, test_admin_user: object
 ) -> None:
-    """user-токен на чужой /users/{id} → 404 (DB-layer RBAC, anti-enumeration); свой id → 200.
+    """user-токен на чужой /users/{id} → 404 (RBAC на уровне БД, анти-энумерация); свой id → 200.
 
-    AUTH-05 (D-12 уровень 2): owner-scoped get_user_for_principal → None для чужого ресурса → 404.
+    owner-scoped get_user_for_principal → None для чужого ресурса → 404.
     """
     other = await auth_client.get(f"/users/{test_admin_user.id}")  # type: ignore[attr-defined]
     assert other.status_code == 404
@@ -617,7 +617,7 @@ async def test_rbac_db_layer(
 async def test_get_me(auth_client: AsyncClient, client: AsyncClient, test_user: object) -> None:
     """GET /users/me → 200 + профиль без password_hash; без Authorization → 401.
 
-    AUTH-06 (D-13): просмотр профиля — id, email, role, is_active, created_at.
+    Просмотр профиля — id, email, role, is_active, created_at.
     """
     no_auth = await client.get("/users/me")
     assert no_auth.status_code == 401
@@ -634,7 +634,7 @@ async def test_get_me(auth_client: AsyncClient, client: AsyncClient, test_user: 
 async def test_change_password_wrong_current(auth_client: AsyncClient) -> None:
     """POST /users/me/password с неверным current_password → 400; новый хеш не пишется.
 
-    AUTH-07 (D-05): верификация текущего пароля до записи нового.
+    Верификация текущего пароля до записи нового.
     """
     resp = await auth_client.post(
         "/users/me/password",

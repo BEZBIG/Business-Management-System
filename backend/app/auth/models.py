@@ -44,7 +44,7 @@ class User(Base, TimestampMixin):
     role: Mapped[UserRole] = mapped_column(
         # values_callable: биндить .value (lowercase 'user'/'manager'/'admin'), а не
         # имя члена enum ('USER') — иначе INSERT падает на native PG enum user_role,
-        # значения которого создаются миграцией 0002 в нижнем регистре (Rule 1 — bug).
+        # значения которого создаются миграцией в нижнем регистре.
         Enum(
             UserRole,
             name="user_role",
@@ -61,4 +61,4 @@ class User(Base, TimestampMixin):
         default=True,
         server_default="true",
     )
-    # created_at и updated_at наследуются от TimestampMixin — не дублировать (D-02)
+    # created_at и updated_at наследуются от TimestampMixin — не дублировать

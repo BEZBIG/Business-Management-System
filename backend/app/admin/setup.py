@@ -1,6 +1,6 @@
 """SQLAdmin панель: AdminAuthBackend на itsdangerous session-cookie + UserAdmin view.
 
-Монтируется через setup_admin(app, engine) в main.py (D-15).
+Монтируется через setup_admin(app, engine) в main.py.
 SessionMiddleware автоматически добавляется sqladmin в sub-app /admin — вручную не добавлять.
 """
 
@@ -23,7 +23,7 @@ logger = structlog.get_logger(__name__)
 
 
 class AdminAuthBackend(AuthenticationBackend):
-    """Кастомный backend аутентификации SQLAdmin (D-14).
+    """Кастомный backend аутентификации SQLAdmin.
 
     Переиспользует password_hasher и таблицу User — единая точка истины по кредам.
     Требует role == ADMIN; неаутентифицированные и не-admin отклоняются.
@@ -72,24 +72,24 @@ class AdminAuthBackend(AuthenticationBackend):
 class UserAdmin(ModelView, model=User):
     """Admin-представление модели User.
 
-    column_list — только скалярные поля (D-15, Pitfall 1 MissingGreenlet):
+    column_list — только скалярные поля:
     никаких relationships во избежание N+1 и MissingGreenlet в async-контексте.
     """
 
     name = "User"
     name_plural = "Users"
-    # ТОЛЬКО скалярные поля — guard от MissingGreenlet (D-15, STATE Фазы 1)
+    # ТОЛЬКО скалярные поля — защита от MissingGreenlet
     column_list = [User.id, User.email, User.role, User.is_active, User.created_at]
     # Мягкое удаление через is_active — прямое DELETE из UI запрещено
     can_delete = False
 
 
 def setup_admin(app: FastAPI, engine: AsyncEngine) -> None:
-    """Монтирует SQLAdmin панель с кастомным AuthenticationBackend (D-15).
+    """Монтирует SQLAdmin панель с кастомным AuthenticationBackend.
 
     Передаёт тот же async engine из app.db.engine — не создавать новый.
     SessionMiddleware добавляется sqladmin в свой sub-app автоматически —
-    НЕ добавлять вручную к родительскому app (создаст дубль, Pitfall 4 RESOLVED).
+    НЕ добавлять вручную к родительскому app (создаст дубль).
     """
     auth_backend = AdminAuthBackend(secret_key=settings.admin_session_secret)
     admin = Admin(app=app, engine=engine, authentication_backend=auth_backend)

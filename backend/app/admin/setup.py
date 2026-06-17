@@ -18,6 +18,8 @@ from app.auth.security import password_hasher
 from app.auth.service import get_user_by_email
 from app.core.config import settings
 from app.db.engine import async_session_factory
+from app.tasks.models import Task
+from app.teams.models import Team
 
 logger = structlog.get_logger(__name__)
 
@@ -69,6 +71,46 @@ class AdminAuthBackend(AuthenticationBackend):
         return request.session.get("role") == "admin"
 
 
+class TeamAdmin(ModelView, model=Team):
+    """Admin-представление модели Team.
+
+    column_list — только скалярные поля:
+    никаких relationships (member_links) во избежание N+1 и MissingGreenlet в async-контексте.
+    Полноценные фильтры/поиск (ADMIN-02/03) — Фаза 7.
+    """
+
+    name = "Team"
+    name_plural = "Teams"
+    # ТОЛЬКО скалярные поля — защита от MissingGreenlet
+    column_list = [Team.id, Team.name, Team.invite_code, Team.created_at]
+    # Мягкое управление составом через API — прямое DELETE из UI запрещено
+    can_delete = False
+
+
+class TaskAdmin(ModelView, model=Task):
+    """Admin-представление модели Task.
+
+    column_list — только скалярные поля:
+    никаких relationships (comments) во избежание N+1 и MissingGreenlet в async-контексте.
+    can_delete=False: soft-delete через is_deleted, прямой DELETE из UI запрещён (D-09, T-03-22).
+    Полноценные фильтры/поиск (ADMIN-02/03) — Фаза 7.
+    """
+
+    name = "Task"
+    name_plural = "Tasks"
+    # ТОЛЬКО скалярные поля — защита от MissingGreenlet
+    column_list = [
+        Task.id,
+        Task.title,
+        Task.status,
+        Task.is_deleted,
+        Task.team_id,
+        Task.created_at,
+    ]
+    # Soft-delete: hard-delete из UI запрещён (D-09)
+    can_delete = False
+
+
 class UserAdmin(ModelView, model=User):
     """Admin-представление модели User.
 
@@ -93,4 +135,6 @@ def setup_admin(app: FastAPI, engine: AsyncEngine) -> None:
     """
     auth_backend = AdminAuthBackend(secret_key=settings.admin_session_secret)
     admin = Admin(app=app, engine=engine, authentication_backend=auth_backend)
+    admin.add_view(TeamAdmin)
+    admin.add_view(TaskAdmin)
     admin.add_view(UserAdmin)

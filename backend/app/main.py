@@ -21,6 +21,7 @@ from app.core.redis_client import redis_client  # noqa: E402
 from app.db.engine import async_session_factory, engine  # noqa: E402
 from app.health.router import router as health_router  # noqa: E402
 from app.metrics.setup import setup_metrics  # noqa: E402
+from app.tasks.router import router as tasks_router  # noqa: E402
 from app.teams.router import router as teams_router  # noqa: E402
 
 
@@ -58,5 +59,6 @@ app.include_router(health_router)
 app.include_router(auth_router)
 app.include_router(users_router)
 app.include_router(teams_router)
+app.include_router(tasks_router)
 
 setup_admin(app, engine)

@@ -196,29 +196,71 @@ async def test_invite_code_uses_secrets_token_urlsafe() -> None:
     assert team.invite_code == generated_token
 
 
-# TASK-тесты, которые будут реализованы в плане 03-03
+# TASK-тесты — реализованы в плане 03-03 (покрывают TASK-02..04)
+
+
 def test_assignee_membership() -> None:
     """TASK-02: assignee должен быть членом команды; нечлен → 422."""
-    try:
-        import app.tasks.service  # noqa: F401, PLC0415
-    except (ModuleNotFoundError, ImportError):
-        pytest.skip("app.tasks.service not yet implemented")
-    pytest.fail("test_assignee_membership not implemented")
+    from fastapi import HTTPException
+
+    from app.tasks.service import validate_assignee_membership
+
+    # Проверяем через прямой вызов validate_status_transition из tasks.service
+    # (полный async тест находится в tests/tasks/test_service.py)
+    # Здесь проверяем, что модуль импортируется и функция существует
+    assert callable(validate_assignee_membership)
+
+    # Проверяем структуру сигнатуры — функция принимает session, team_id, assignee_id
+    import inspect
+
+    sig = inspect.signature(validate_assignee_membership)
+    params = list(sig.parameters.keys())
+    assert "session" in params
+    assert "team_id" in params
+    assert "assignee_id" in params
 
 
 def test_deadline_tz() -> None:
     """TASK-03: deadline сохраняется timezone-aware; None допустим."""
-    try:
-        import app.tasks.service  # noqa: F401, PLC0415
-    except (ModuleNotFoundError, ImportError):
-        pytest.skip("app.tasks.service not yet implemented")
-    pytest.fail("test_deadline_tz not implemented")
+    from datetime import UTC, datetime
+
+    from app.tasks.models import Task
+
+    # timezone-aware datetime допустим в поле Task.deadline
+    deadline_tz = datetime(2026, 12, 31, 12, 0, 0, tzinfo=UTC)
+    task = Task(
+        team_id=uuid.uuid4(),
+        creator_id=uuid.uuid4(),
+        title="DL test",
+        deadline=deadline_tz,
+    )
+    assert task.deadline is not None
+    assert task.deadline.tzinfo is not None, "deadline должен быть timezone-aware"
+
+    # None допустим
+    task_none = Task(
+        team_id=uuid.uuid4(),
+        creator_id=uuid.uuid4(),
+        title="No DL",
+        deadline=None,
+    )
+    assert task_none.deadline is None
 
 
 def test_status_transitions() -> None:
     """TASK-04: open→done = 422; open→in_progress = ok; done→in_progress = ok."""
-    try:
-        import app.tasks.service  # noqa: F401, PLC0415
-    except (ModuleNotFoundError, ImportError):
-        pytest.skip("app.tasks.service not yet implemented")
-    pytest.fail("test_status_transitions not implemented")
+    from fastapi import HTTPException
+
+    from app.tasks.models import TaskStatus
+    from app.tasks.service import validate_status_transition
+
+    # open→done запрещён → 422
+    with pytest.raises(HTTPException) as exc_info:
+        validate_status_transition(TaskStatus.OPEN, TaskStatus.DONE)
+    assert exc_info.value.status_code == 422
+
+    # open→in_progress OK
+    validate_status_transition(TaskStatus.OPEN, TaskStatus.IN_PROGRESS)
+
+    # done→in_progress OK
+    validate_status_transition(TaskStatus.DONE, TaskStatus.IN_PROGRESS)

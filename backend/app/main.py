@@ -20,6 +20,8 @@ from app.core.middleware import RequestIDMiddleware  # noqa: E402
 from app.core.redis_client import redis_client  # noqa: E402
 from app.db.engine import async_session_factory, engine  # noqa: E402
 from app.health.router import router as health_router  # noqa: E402
+from app.meetings.router import calendar_router  # noqa: E402
+from app.meetings.router import router as meetings_router  # noqa: E402
 from app.metrics.setup import setup_metrics  # noqa: E402
 from app.ratings.router import router as ratings_router  # noqa: E402
 from app.ratings.router import users_ratings_router  # noqa: E402
@@ -62,6 +64,8 @@ app.include_router(auth_router)
 app.include_router(users_router)
 app.include_router(teams_router)
 app.include_router(tasks_router)
+app.include_router(meetings_router)
+app.include_router(calendar_router)
 app.include_router(ratings_router)
 app.include_router(users_ratings_router)
 

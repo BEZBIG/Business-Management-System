@@ -18,6 +18,7 @@ from app.auth.security import password_hasher
 from app.auth.service import get_user_by_email
 from app.core.config import settings
 from app.db.engine import async_session_factory
+from app.meetings.models import Meeting
 from app.tasks.models import Task
 from app.teams.models import Team
 
@@ -111,6 +112,32 @@ class TaskAdmin(ModelView, model=Task):
     can_delete = False
 
 
+class MeetingAdmin(ModelView, model=Meeting):
+    """Admin-представление модели Meeting.
+
+    column_list — только скалярные поля:
+    никаких relationships (participants) во избежание N+1 и MissingGreenlet в async-контексте.
+    can_delete=False: soft-delete через status=cancelled, прямой DELETE из UI запрещён (D-12, D-17).
+    Полноценные фильтры/поиск (ADMIN-02/03) — Фаза 7.
+    """
+
+    name = "Meeting"
+    name_plural = "Meetings"
+    # ТОЛЬКО скалярные поля — защита от MissingGreenlet
+    column_list = [
+        Meeting.id,
+        Meeting.title,
+        Meeting.status,
+        Meeting.team_id,
+        Meeting.creator_id,
+        Meeting.start_time,
+        Meeting.end_time,
+        Meeting.created_at,
+    ]
+    # Soft-delete: hard-delete из UI запрещён (D-12); отмена через status=CANCELLED
+    can_delete = False
+
+
 class UserAdmin(ModelView, model=User):
     """Admin-представление модели User.
 
@@ -137,4 +164,5 @@ def setup_admin(app: FastAPI, engine: AsyncEngine) -> None:
     admin = Admin(app=app, engine=engine, authentication_backend=auth_backend)
     admin.add_view(TeamAdmin)
     admin.add_view(TaskAdmin)
+    admin.add_view(MeetingAdmin)
     admin.add_view(UserAdmin)

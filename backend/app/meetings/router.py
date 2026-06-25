@@ -4,12 +4,16 @@
 Роутер встреч вложен в team-контекст: /teams/{team_id}/meetings.
 Роутер календаря монтируется отдельно: /calendar.
 RBAC: get_team_membership (404 для не-членов) + require_meeting_owner (403 для не-владельцев).
+
+Публикация real-time событий (Jitsi-ссылки, отмена встречи) выполняется здесь —
+ПОСЛЕ commit-а транзакции в get_async_session — чтобы исключить ghost-уведомления
+и предотвратить откат транзакции при сбое Redis (CR-01).
 """
 
 from __future__ import annotations
 
 import uuid
-from datetime import datetime
+from datetime import UTC, datetime
 
 import structlog
 from fastapi import APIRouter, Depends, status
@@ -17,6 +21,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.auth.dependencies import get_current_user
 from app.auth.models import User
+from app.core.redis_client import redis_client
 from app.db.session import get_async_session
 from app.meetings.dependencies import get_meeting_or_404, require_meeting_owner
 from app.meetings.models import Meeting
@@ -25,6 +30,13 @@ from app.meetings.service import (
     cancel_meeting,
     create_meeting,
     get_calendar_events,
+)
+from app.realtime.publisher import publish_event
+from app.realtime.schemas import (
+    JitsiLinkData,
+    JitsiLinkEvent,
+    MeetingCancelledData,
+    MeetingCancelledEvent,
 )
 from app.teams.dependencies import get_team_membership
 from app.teams.models import TeamMember
@@ -73,6 +85,9 @@ async def create_meeting_endpoint(
 
     Конфликт по расписанию → 409 с detalями ConflictDetail.
     Нечлен команды в participant_ids → 422.
+
+    Публикация Jitsi-ссылки выполняется после явного commit-а — исключает
+    ghost-уведомления при откате транзакции и не откатывает БД при сбое Redis.
     """
     meeting = await create_meeting(
         session,
@@ -84,6 +99,32 @@ async def create_meeting_endpoint(
         end_time=data.end_time,
         participant_ids=data.participant_ids,
     )
+    # Явный commit до публикации: встреча гарантированно в БД (CR-01)
+    await session.commit()
+
+    # Публикуем Jitsi-ссылку каждому участнику (RT-02).
+    # Сбой Redis не откатывает уже зафиксированную транзакцию.
+    all_participants = {current_user.id, *data.participant_ids}
+    jitsi_url = f"https://meet.jit.si/{meeting.jitsi_room_token}"
+    for uid in all_participants:
+        try:
+            await publish_event(
+                redis_client,
+                str(uid),
+                JitsiLinkEvent(
+                    type="jitsi_link",
+                    ts=datetime.now(UTC),
+                    data=JitsiLinkData(
+                        meeting_id=meeting.id,
+                        meeting_title=meeting.title,
+                        jitsi_url=jitsi_url,
+                        start_time=meeting.start_time,
+                    ),
+                ),
+            )
+        except Exception:  # noqa: BLE001
+            logger.warning("realtime_publish_failed", user_id=str(uid), meeting_id=str(meeting.id))
+
     logger.info("meetings_create", meeting_id=str(meeting.id), team_id=str(team_id))
     return _to_meeting_response(meeting, current_user.id)
 
@@ -112,8 +153,37 @@ async def cancel_meeting_endpoint(
 
     Участник, не являющийся creator → 403.
     Не-член команды → 404 (через require_meeting_owner → get_meeting_or_404).
+
+    Публикация meeting_cancelled выполняется после явного commit-а — исключает
+    ghost-уведомления при откате транзакции и не откатывает БД при сбое Redis.
     """
+    # Сохраняем участников до commit-а (после commit ORM-объект может быть detached)
+    participants_snapshot = list(meeting.participants)
+
     await cancel_meeting(session, meeting)
+    # Явный commit до публикации: статус CANCELLED гарантированно в БД (CR-01)
+    await session.commit()
+
+    # Уведомляем участников об отмене (RT-03a).
+    # Сбой Redis не откатывает уже зафиксированную транзакцию.
+    for p in participants_snapshot:
+        try:
+            await publish_event(
+                redis_client,
+                str(p.user_id),
+                MeetingCancelledEvent(
+                    type="meeting_cancelled",
+                    ts=datetime.now(UTC),
+                    data=MeetingCancelledData(
+                        meeting_id=meeting.id,
+                        meeting_title=meeting.title,
+                        cancelled_by=meeting.creator_id,
+                    ),
+                ),
+            )
+        except Exception:  # noqa: BLE001
+            logger.warning("realtime_publish_failed", user_id=str(p.user_id), meeting_id=str(meeting.id))
+
     logger.info("meetings_cancel", meeting_id=str(meeting.id))
     return {"detail": "Meeting cancelled"}
 

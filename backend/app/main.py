@@ -55,11 +55,14 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
 
     yield
 
-    # Graceful shutdown: сначала listener, затем брокер/redis/engine (T-05-12)
+    # Graceful shutdown: сначала listener, затем брокер/redis/engine (T-05-12, CR-03).
+    # Перехватываем любое исключение из listener_task: CancelledError — нормальная остановка,
+    # остальное — listener умер раньше shutdown (уже залогировано asyncio).
+    # Все шаги cleanup выполняются безусловно — утечки соединений при rolling deploy исключены.
     listener_task.cancel()
     try:
         await listener_task
-    except asyncio.CancelledError:
+    except (asyncio.CancelledError, Exception):
         pass
     await pubsub_redis.aclose()
 

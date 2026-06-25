@@ -66,13 +66,23 @@ async def ws_endpoint(websocket: WebSocket) -> None:
         return
 
     # --- Шаг 4: проверить jti-ревокацию в Redis ---
-    jti = str(payload.get("jti", ""))
+    # WR-01: токен без jti обходит revocation-check (ключ "jti:" не создаётся при logout).
+    # Отклоняем явно — валидный токен обязан содержать jti.
+    jti = payload.get("jti")
+    if not jti:
+        await websocket.close(code=4008, reason="Invalid token")
+        return
     if await redis_client.exists(f"jti:{jti}"):
         await websocket.close(code=4008, reason="Token revoked")
         return
 
     # --- Шаг 5: проверить пользователя и is_active в БД (D-04) ---
-    user_id = str(payload["sub"])
+    # WR-02: payload["sub"] → KeyError при отсутствии sub; используем .get() с явной проверкой.
+    raw_sub = payload.get("sub")
+    if not raw_sub:
+        await websocket.close(code=4008, reason="Invalid token")
+        return
+    user_id = str(raw_sub)
     async with async_session_factory() as session:
         user: User | None = await session.get(User, user_id)
         if user is None or not user.is_active:

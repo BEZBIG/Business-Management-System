@@ -9,6 +9,9 @@ commit делает get_async_session. flush() используется для �
   3. Conflict check SELECT с строгим < (D-05, D-07)
   4. INSERT Meeting с CSPRNG jitsi_room_token (D-09)
   5. Bulk INSERT MeetingParticipant (включая creator, D-02)
+
+Сервисный слой намеренно не вызывает publish_event: публикация
+real-time событий выполняется в router.py ПОСЛЕ commit-а транзакции.
 """
 
 from __future__ import annotations
@@ -16,7 +19,7 @@ from __future__ import annotations
 import secrets
 import struct
 import uuid
-from datetime import UTC, datetime
+from datetime import datetime
 
 import sqlalchemy as sa
 import structlog
@@ -25,16 +28,8 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
-from app.core.redis_client import redis_client
 from app.meetings.models import Meeting, MeetingParticipant, MeetingStatus
 from app.meetings.schemas import CalendarEvent, ConflictDetail
-from app.realtime.publisher import publish_event
-from app.realtime.schemas import (
-    JitsiLinkData,
-    JitsiLinkEvent,
-    MeetingCancelledData,
-    MeetingCancelledEvent,
-)
 from app.tasks.models import Task
 from app.teams.service import get_team_member
 
@@ -189,25 +184,6 @@ async def create_meeting(
 
     logger.info("meeting_created", meeting_id=str(meeting.id), team_id=str(team_id))
 
-    # Публикуем Jitsi-ссылку каждому участнику (RT-02, T-05-10)
-    # all_participants: creator + participant_ids (дедупликация выше, line ~150)
-    jitsi_url = f"https://meet.jit.si/{meeting.jitsi_room_token}"
-    for uid in all_participants:
-        await publish_event(
-            redis_client,
-            str(uid),
-            JitsiLinkEvent(
-                type="jitsi_link",
-                ts=datetime.now(UTC),
-                data=JitsiLinkData(
-                    meeting_id=meeting.id,
-                    meeting_title=meeting.title,
-                    jitsi_url=jitsi_url,
-                    start_time=meeting.start_time,
-                ),
-            ),
-        )
-
     return meeting
 
 
@@ -219,23 +195,6 @@ async def cancel_meeting(session: AsyncSession, meeting: Meeting) -> None:
     meeting.status = MeetingStatus.CANCELLED
     await session.flush()
     logger.info("meeting_cancelled", meeting_id=str(meeting.id))
-
-    # Уведомляем всех участников об отмене встречи (RT-03a, T-05-11)
-    # meeting.participants загружен через selectinload в caller (get_meeting_detail)
-    for p in meeting.participants:
-        await publish_event(
-            redis_client,
-            str(p.user_id),
-            MeetingCancelledEvent(
-                type="meeting_cancelled",
-                ts=datetime.now(UTC),
-                data=MeetingCancelledData(
-                    meeting_id=meeting.id,
-                    meeting_title=meeting.title,
-                    cancelled_by=meeting.creator_id,
-                ),
-            ),
-        )
 
 
 async def get_meeting_detail(
@@ -341,6 +300,3 @@ def get_jitsi_url_for_user(meeting: Meeting, user_id: uuid.UUID) -> str | None:
     return build_meeting_response_jitsi_url(meeting, user_id)
 
 
-def _now_utc() -> datetime:
-    """Возвращает текущее UTC-время. Отдельная функция для мокирования в тестах."""
-    return datetime.now(UTC)

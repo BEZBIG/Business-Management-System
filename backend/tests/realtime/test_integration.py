@@ -19,7 +19,6 @@ import pytest
 from app.realtime.publisher import publish_event
 from app.realtime.schemas import JitsiLinkData, JitsiLinkEvent
 
-
 # ---------------------------------------------------------------------------
 # Unit-тесты publish_event (без Docker-стека)
 # ---------------------------------------------------------------------------
@@ -121,10 +120,7 @@ async def test_publish_event_payload_is_model_dump_json() -> None:
 @pytest.mark.integration
 @pytest.mark.skipif(
     os.environ.get("CI_INTEGRATION") != "1",
-    reason=(
-        "Integration test — requires Docker Compose stack. "
-        "Set CI_INTEGRATION=1 to enable."
-    ),
+    reason=("Integration test — requires Docker Compose stack. Set CI_INTEGRATION=1 to enable."),
 )
 @pytest.mark.asyncio
 async def test_jitsi_link_delivery() -> None:
@@ -135,10 +131,7 @@ async def test_jitsi_link_delivery() -> None:
 @pytest.mark.integration
 @pytest.mark.skipif(
     os.environ.get("CI_INTEGRATION") != "1",
-    reason=(
-        "Integration test — requires Docker Compose stack. "
-        "Set CI_INTEGRATION=1 to enable."
-    ),
+    reason=("Integration test — requires Docker Compose stack. Set CI_INTEGRATION=1 to enable."),
 )
 @pytest.mark.asyncio
 async def test_meeting_cancelled_delivery() -> None:

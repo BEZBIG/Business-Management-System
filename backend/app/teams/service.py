@@ -43,9 +43,7 @@ async def get_team_member(
     return result.scalar_one_or_none()
 
 
-async def create_team(
-    session: AsyncSession, name: str, creator_id: uuid.UUID
-) -> Team:
+async def create_team(session: AsyncSession, name: str, creator_id: uuid.UUID) -> Team:
     """Создаёт команду и автоматически добавляет создателя как owner (D-01, D-04).
 
     invite_code генерируется через secrets.token_urlsafe(32) — 256 бит энтропии.
@@ -124,9 +122,7 @@ async def add_member(
     return member
 
 
-async def remove_member(
-    session: AsyncSession, team_id: uuid.UUID, user_id: uuid.UUID
-) -> bool:
+async def remove_member(session: AsyncSession, team_id: uuid.UUID, user_id: uuid.UUID) -> bool:
     """Удаляет участника из команды (D-03, T-03-09).
 
     Запрещает удаление последнего owner команды — защита от обезглавливания.

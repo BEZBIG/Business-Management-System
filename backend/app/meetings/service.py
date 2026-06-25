@@ -197,9 +197,7 @@ async def cancel_meeting(session: AsyncSession, meeting: Meeting) -> None:
     logger.info("meeting_cancelled", meeting_id=str(meeting.id))
 
 
-async def get_meeting_detail(
-    session: AsyncSession, meeting_id: uuid.UUID
-) -> Meeting | None:
+async def get_meeting_detail(session: AsyncSession, meeting_id: uuid.UUID) -> Meeting | None:
     """Загружает активную встречу с участниками через selectinload.
 
     selectinload(Meeting.participants) — обязателен (lazy="raise", Pitfall 3).
@@ -278,9 +276,7 @@ async def get_calendar_events(
     return events
 
 
-def build_meeting_response_jitsi_url(
-    meeting: Meeting, current_user_id: uuid.UUID
-) -> str | None:
+def build_meeting_response_jitsi_url(meeting: Meeting, current_user_id: uuid.UUID) -> str | None:
     """Возвращает jitsi_url только для участников встречи (D-10).
 
     Не-участник получает None — анти-перечисление приватных URL.
@@ -298,5 +294,3 @@ def get_jitsi_url_for_user(meeting: Meeting, user_id: uuid.UUID) -> str | None:
     Алиас build_meeting_response_jitsi_url для использования в роутере.
     """
     return build_meeting_response_jitsi_url(meeting, user_id)
-
-

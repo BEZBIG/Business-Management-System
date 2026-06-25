@@ -7,8 +7,8 @@ TestClient.websocket_connect — синхронный API; тест объявл
 from __future__ import annotations
 
 import uuid
+from collections.abc import Iterator
 from contextlib import contextmanager
-from typing import Iterator
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
@@ -48,7 +48,7 @@ def _ws_client_gauge() -> Iterator[object]:
     yield TestClient(app, raise_server_exceptions=False)
 
 
-def _mock_factory_for(user: "User | None") -> MagicMock:
+def _mock_factory_for(user: object | None) -> MagicMock:
     """Создаёт мок async_session_factory для gauge-тестов."""
     mock_session = AsyncMock()
     mock_session.get.return_value = user
@@ -60,7 +60,7 @@ def _mock_factory_for(user: "User | None") -> MagicMock:
 
 
 def test_gauge_no_drift_on_disconnect() -> None:
-    """RT-03b: gauge инкрементится при подключении и декрементится при разрыве (нет дрейфа, D-12)."""
+    """RT-03b: gauge инкрементится при подключении и декрементится при разрыве соединения."""
     if not _GAUGE_AVAILABLE:
         pytest.skip("app.realtime not yet implemented")
 

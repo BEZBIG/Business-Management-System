@@ -42,7 +42,7 @@ async def ws_endpoint(websocket: WebSocket) -> None:
     # --- Шаг 1: извлечь токен из subprotocols ДО accept ---
     subprotocols: list[str] = websocket["subprotocols"]
     token: str | None = next(
-        (p[len("bearer."):] for p in subprotocols if p.startswith("bearer.")),
+        (p[len("bearer.") :] for p in subprotocols if p.startswith("bearer.")),
         None,
     )
 

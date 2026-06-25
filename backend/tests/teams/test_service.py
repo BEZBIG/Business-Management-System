@@ -201,7 +201,6 @@ async def test_invite_code_uses_secrets_token_urlsafe() -> None:
 
 def test_assignee_membership() -> None:
     """TASK-02: assignee должен быть членом команды; нечлен → 422."""
-    from fastapi import HTTPException
 
     from app.tasks.service import validate_assignee_membership
 

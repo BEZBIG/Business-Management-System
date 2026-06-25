@@ -45,6 +45,4 @@ class Rating(Base, TimestampMixin):
         nullable=False,
     )
 
-    __table_args__ = (
-        sa.UniqueConstraint("task_id", "rater_id", name="uq_ratings_task_rater"),
-    )
+    __table_args__ = (sa.UniqueConstraint("task_id", "rater_id", name="uq_ratings_task_rater"),)

@@ -6,12 +6,15 @@ import asyncio
 from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
 
+import structlog
 from fastapi import FastAPI
 from redis.asyncio import Redis
 
 from app.core.logging import setup_logging
 
 setup_logging()
+
+logger = structlog.get_logger(__name__)
 
 from app.admin.setup import setup_admin  # noqa: E402
 from app.auth.router import router as auth_router  # noqa: E402
@@ -62,8 +65,11 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     listener_task.cancel()
     try:
         await listener_task
-    except (asyncio.CancelledError, Exception):
-        pass
+    except asyncio.CancelledError:
+        pass  # нормальная остановка по cancel()
+    except Exception as exc:  # noqa: BLE001
+        # listener умер раньше shutdown — логируем, но cleanup продолжаем (best-effort)
+        logger.warning("listener_task_unclean_shutdown", error=str(exc))
     await pubsub_redis.aclose()
 
     await broker.stop()

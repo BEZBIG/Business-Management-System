@@ -20,8 +20,8 @@ try:
     from app.auth.security import create_access_token
     from app.db.session import get_async_session
     from app.main import app
-    from app.meetings.dependencies import get_meeting_or_404, require_meeting_owner
-    from app.meetings.models import Meeting, MeetingParticipant, MeetingStatus
+    from app.meetings.dependencies import require_meeting_owner
+    from app.meetings.models import Meeting, MeetingStatus
     from app.meetings.schemas import CalendarEvent
     from app.teams.dependencies import get_team_membership
     from app.teams.models import TeamMember, TeamRole
@@ -66,18 +66,20 @@ def _make_meeting(
 
     m = Meeting.__new__(Meeting)
     # Обходим SA relationship-инициализацию через прямую установку __dict__
-    m.__dict__.update({
-        "id": meeting_id or uuid.uuid4(),
-        "team_id": tid,
-        "creator_id": cid,
-        "title": "Test Meeting",
-        "description": None,
-        "status": MeetingStatus.ACTIVE,
-        "start_time": now + timedelta(hours=1),
-        "end_time": now + timedelta(hours=2),
-        "jitsi_room_token": "test_token_abc123",
-        "created_at": now,
-    })
+    m.__dict__.update(
+        {
+            "id": meeting_id or uuid.uuid4(),
+            "team_id": tid,
+            "creator_id": cid,
+            "title": "Test Meeting",
+            "description": None,
+            "status": MeetingStatus.ACTIVE,
+            "start_time": now + timedelta(hours=1),
+            "end_time": now + timedelta(hours=2),
+            "jitsi_room_token": "test_token_abc123",
+            "created_at": now,
+        }
+    )
 
     # Создаём участников (creator всегда включён)
     all_ids = list({cid, *(participant_ids or [])})
@@ -139,9 +141,7 @@ async def test_create_meeting() -> None:
                 base_url="http://test",
                 headers={"Authorization": f"Bearer {create_access_token(str(user_id), 'user')}"},
             ) as ac:
-                resp = await ac.post(
-                    f"/teams/{team_id}/meetings", json=request_body
-                )
+                resp = await ac.post(f"/teams/{team_id}/meetings", json=request_body)
         finally:
             app.dependency_overrides.clear()
 
@@ -192,14 +192,13 @@ async def test_create_meeting_jitsi_url_hidden_for_non_participant() -> None:
         app.dependency_overrides[get_team_membership] = lambda: member
 
         try:
+            token = create_access_token(str(other_user_id), "user")
             async with AsyncClient(
                 transport=ASGITransport(app=app),
                 base_url="http://test",
-                headers={"Authorization": f"Bearer {create_access_token(str(other_user_id), 'user')}"},
+                headers={"Authorization": f"Bearer {token}"},
             ) as ac:
-                resp = await ac.post(
-                    f"/teams/{team_id}/meetings", json=request_body
-                )
+                resp = await ac.post(f"/teams/{team_id}/meetings", json=request_body)
         finally:
             app.dependency_overrides.clear()
 
@@ -301,7 +300,8 @@ async def test_calendar_combined() -> None:
                 base_url="http://test",
                 headers={"Authorization": f"Bearer {create_access_token(str(user_id), 'user')}"},
             ) as ac:
-                # params= экранирует автоматически; strftime без tzinfo — FastAPI принимает naive datetime
+                # params= экранирует автоматически; strftime без tzinfo —
+                # FastAPI принимает naive datetime
                 from_dt = now.strftime("%Y-%m-%dT%H:%M:%S")
                 to_dt = (now + timedelta(days=30)).strftime("%Y-%m-%dT%H:%M:%S")
                 resp = await ac.get(

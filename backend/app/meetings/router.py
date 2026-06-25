@@ -182,7 +182,9 @@ async def cancel_meeting_endpoint(
                 ),
             )
         except Exception:  # noqa: BLE001
-            logger.warning("realtime_publish_failed", user_id=str(p.user_id), meeting_id=str(meeting.id))
+            logger.warning(
+                "realtime_publish_failed", user_id=str(p.user_id), meeting_id=str(meeting.id)
+            )
 
     logger.info("meetings_cancel", meeting_id=str(meeting.id))
     return {"detail": "Meeting cancelled"}

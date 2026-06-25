@@ -62,15 +62,11 @@ class MeetingCreate(BaseModel):
             )
         max_hours = int(MAX_DURATION.total_seconds() // 3600)
         if duration > MAX_DURATION:
-            raise ValueError(
-                f"Длительность встречи не может превышать {max_hours} часов"
-            )
+            raise ValueError(f"Длительность встречи не может превышать {max_hours} часов")
 
         # Лимит участников (D-14)
         if len(self.participant_ids) > MAX_PARTICIPANTS:
-            raise ValueError(
-                f"Количество участников не может превышать {MAX_PARTICIPANTS}"
-            )
+            raise ValueError(f"Количество участников не может превышать {MAX_PARTICIPANTS}")
 
         return self
 

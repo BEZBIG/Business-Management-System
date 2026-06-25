@@ -20,7 +20,7 @@ try:
     from app.auth.security import create_access_token
     from app.db.session import get_async_session
     from app.main import app
-    from app.tasks.dependencies import get_task_or_404, require_task_editor
+    from app.tasks.dependencies import require_task_editor
     from app.tasks.models import Task, TaskStatus
     from app.teams.dependencies import get_team_membership
     from app.teams.models import TeamMember, TeamRole
@@ -115,9 +115,7 @@ async def test_create_task_unit() -> None:
                 base_url="http://test",
                 headers={"Authorization": f"Bearer {create_access_token(str(user_id), 'user')}"},
             ) as ac:
-                resp = await ac.post(
-                    f"/teams/{team_id}/tasks", json={"title": "Test task"}
-                )
+                resp = await ac.post(f"/teams/{team_id}/tasks", json={"title": "Test task"})
         finally:
             app.dependency_overrides.clear()
 
@@ -180,7 +178,6 @@ async def test_patch_task_without_permission_403() -> None:
     task_id = uuid.uuid4()
     user = _make_user(UserRole.USER, user_id)
     member = _make_member(team_id, user_id, TeamRole.MEMBER)
-    task = _make_task(task_id=task_id, team_id=team_id, creator_id=uuid.uuid4())  # другой creator
 
     mock_session = AsyncMock()
 
@@ -443,9 +440,7 @@ async def test_task_detail_comments(async_engine: object, client: AsyncClient) -
         task_id = task_resp.json()["id"]
 
         # Detail до комментариев → пустой массив comments
-        detail_before = await client.get(
-            f"/teams/{team_id}/tasks/{task_id}", headers=owner_headers
-        )
+        detail_before = await client.get(f"/teams/{team_id}/tasks/{task_id}", headers=owner_headers)
         assert detail_before.status_code == 200
         assert detail_before.json()["comments"] == []
 
@@ -460,9 +455,7 @@ async def test_task_detail_comments(async_engine: object, client: AsyncClient) -
         assert comment_data["body"] == "Первый комментарий"
 
         # GET detail после комментария → comments непустой
-        detail_after = await client.get(
-            f"/teams/{team_id}/tasks/{task_id}", headers=owner_headers
-        )
+        detail_after = await client.get(f"/teams/{team_id}/tasks/{task_id}", headers=owner_headers)
         assert detail_after.status_code == 200
         comments = detail_after.json()["comments"]
         assert len(comments) >= 1, "detail.comments должен содержать хотя бы один комментарий"
@@ -510,9 +503,7 @@ async def test_task_non_member_access(async_engine: object, client: AsyncClient)
         created_ids = [owner.id, outsider.id]
 
     try:
-        owner_headers = {
-            "Authorization": f"Bearer {create_access_token(str(owner.id), 'user')}"
-        }
+        owner_headers = {"Authorization": f"Bearer {create_access_token(str(owner.id), 'user')}"}
         outsider_headers = {
             "Authorization": f"Bearer {create_access_token(str(outsider.id), 'user')}"
         }

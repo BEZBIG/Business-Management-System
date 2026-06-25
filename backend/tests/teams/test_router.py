@@ -93,9 +93,7 @@ async def test_post_teams_creates_team() -> None:
             async with AsyncClient(
                 transport=ASGITransport(app=app),
                 base_url="http://test",
-                headers={
-                    "Authorization": f"Bearer {create_access_token(str(user_id), 'user')}"
-                },
+                headers={"Authorization": f"Bearer {create_access_token(str(user_id), 'user')}"},
             ) as ac:
                 resp = await ac.post("/teams", json={"name": "New Team"})
         finally:
@@ -138,9 +136,7 @@ async def test_get_team_non_member_returns_404() -> None:
             async with AsyncClient(
                 transport=ASGITransport(app=app),
                 base_url="http://test",
-                headers={
-                    "Authorization": f"Bearer {create_access_token(str(user.id), 'user')}"
-                },
+                headers={"Authorization": f"Bearer {create_access_token(str(user.id), 'user')}"},
             ) as ac:
                 resp = await ac.get(f"/teams/{team_id}")
         finally:
@@ -179,9 +175,7 @@ async def test_join_team_valid_code() -> None:
             async with AsyncClient(
                 transport=ASGITransport(app=app),
                 base_url="http://test",
-                headers={
-                    "Authorization": f"Bearer {create_access_token(str(user_id), 'user')}"
-                },
+                headers={"Authorization": f"Bearer {create_access_token(str(user_id), 'user')}"},
             ) as ac:
                 resp = await ac.post(f"/teams/{team_id}/join", json={"code": "validcode"})
         finally:
@@ -222,9 +216,7 @@ async def test_join_team_invalid_code() -> None:
             async with AsyncClient(
                 transport=ASGITransport(app=app),
                 base_url="http://test",
-                headers={
-                    "Authorization": f"Bearer {create_access_token(str(user_id), 'user')}"
-                },
+                headers={"Authorization": f"Bearer {create_access_token(str(user_id), 'user')}"},
             ) as ac:
                 resp = await ac.post(f"/teams/{team_id}/join", json={"code": "wrongcode"})
         finally:
@@ -271,9 +263,7 @@ async def test_remove_member_rbac() -> None:
             async with AsyncClient(
                 transport=ASGITransport(app=app),
                 base_url="http://test",
-                headers={
-                    "Authorization": f"Bearer {create_access_token(str(owner_id), 'user')}"
-                },
+                headers={"Authorization": f"Bearer {create_access_token(str(owner_id), 'user')}"},
             ) as ac:
                 resp = await ac.delete(f"/teams/{team_id}/members/{target_id}")
         finally:
@@ -342,9 +332,7 @@ async def test_assign_role_rbac() -> None:
             async with AsyncClient(
                 transport=ASGITransport(app=app),
                 base_url="http://test",
-                headers={
-                    "Authorization": f"Bearer {create_access_token(str(owner_id), 'user')}"
-                },
+                headers={"Authorization": f"Bearer {create_access_token(str(owner_id), 'user')}"},
             ) as ac:
                 resp = await ac.patch(
                     f"/teams/{team_id}/members/{target_id}/role",
@@ -494,12 +482,8 @@ async def test_remove_member_rbac_integration(async_engine: object, client: Asyn
                 await session.refresh(u)
             created_ids = [owner.id, member.id, target.id]
 
-        owner_headers = {
-            "Authorization": f"Bearer {create_access_token(str(owner.id), 'user')}"
-        }
-        member_headers = {
-            "Authorization": f"Bearer {create_access_token(str(member.id), 'user')}"
-        }
+        owner_headers = {"Authorization": f"Bearer {create_access_token(str(owner.id), 'user')}"}
+        member_headers = {"Authorization": f"Bearer {create_access_token(str(member.id), 'user')}"}
 
         create_resp = await client.post(
             "/teams", json={"name": "RBAC Test Team"}, headers=owner_headers
@@ -579,12 +563,8 @@ async def test_assign_role_rbac_integration(async_engine: object, client: AsyncC
                 await session.refresh(u)
             created_ids = [owner.id, member.id, target.id]
 
-        owner_headers = {
-            "Authorization": f"Bearer {create_access_token(str(owner.id), 'user')}"
-        }
-        member_headers = {
-            "Authorization": f"Bearer {create_access_token(str(member.id), 'user')}"
-        }
+        owner_headers = {"Authorization": f"Bearer {create_access_token(str(owner.id), 'user')}"}
+        member_headers = {"Authorization": f"Bearer {create_access_token(str(member.id), 'user')}"}
 
         create_resp = await client.post(
             "/teams", json={"name": "Role RBAC Team"}, headers=owner_headers

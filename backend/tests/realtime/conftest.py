@@ -16,14 +16,14 @@ try:
     from app.auth.security import create_access_token  # noqa: PLC0415
 
     _REALTIME_AVAILABLE = True
-except (ModuleNotFoundError, ImportError, Exception):
+except (ModuleNotFoundError, ImportError):
     pass
 
 
 def _make_user(
-    role: "UserRole | None" = None,
+    role: UserRole | None = None,
     user_id: uuid.UUID | None = None,
-) -> "User":
+) -> User:
     """Создаёт User без сохранения в БД (обходит SA relationship-инициализацию)."""
     if not _REALTIME_AVAILABLE:
         raise RuntimeError("app.auth not available")  # noqa: TRY003
@@ -31,13 +31,15 @@ def _make_user(
     if role is None:
         role = UserRole.USER
     u = User.__new__(User)
-    u.__dict__.update({
-        "id": user_id or uuid.uuid4(),
-        "email": "realtime-test@example.com",
-        "password_hash": "h",
-        "role": role,
-        "is_active": True,
-    })
+    u.__dict__.update(
+        {
+            "id": user_id or uuid.uuid4(),
+            "email": "realtime-test@example.com",
+            "password_hash": "h",
+            "role": role,
+            "is_active": True,
+        }
+    )
     return u
 
 
@@ -60,7 +62,10 @@ def mock_pubsub() -> AsyncMock:
             "type": "pmessage",
             "pattern": "notifications:*",
             "channel": "notifications:test-user-id",
-            "data": '{"type":"digest","v":1,"ts":"2026-06-25T07:00:00Z","data":{"content":"тест","generated_at":"2026-06-25T07:00:00Z"}}',
+            "data": (
+                '{"type":"digest","v":1,"ts":"2026-06-25T07:00:00Z",'
+                '"data":{"content":"тест","generated_at":"2026-06-25T07:00:00Z"}}'
+            ),
         }
 
     mock = AsyncMock()

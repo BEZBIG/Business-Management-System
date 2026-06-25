@@ -81,7 +81,7 @@ def test_time_validation() -> None:
 
 
 def test_max_participants() -> None:
-    """D-14: более MAX_PARTICIPANTS участников → ValidationError; ровно MAX_PARTICIPANTS допустимо."""
+    """D-14: больше MAX_PARTICIPANTS → ValidationError; ровно MAX_PARTICIPANTS допустимо."""
     # Ровно MAX_PARTICIPANTS → допустимо
     ids_ok = [uuid.uuid4() for _ in range(MAX_PARTICIPANTS)]
     m = _valid_create(participant_ids=ids_ok)

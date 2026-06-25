@@ -76,6 +76,7 @@ def _make_mock_session() -> AsyncMock:
 # test_lock_order
 # ---------------------------------------------------------------------------
 
+
 @pytest.mark.asyncio
 async def test_lock_order() -> None:
     """MEET-02: advisory lock берётся в sorted-порядке (anti-deadlock)."""
@@ -104,6 +105,7 @@ async def test_lock_order() -> None:
 # ---------------------------------------------------------------------------
 # test_conflict_409
 # ---------------------------------------------------------------------------
+
 
 @pytest.mark.asyncio
 async def test_conflict_409() -> None:
@@ -149,6 +151,7 @@ async def test_conflict_409() -> None:
 # test_back_to_back_ok
 # ---------------------------------------------------------------------------
 
+
 @pytest.mark.asyncio
 async def test_back_to_back_ok() -> None:
     """MEET-02: back-to-back (existing.end == new.start) не является конфликтом (строгий <)."""
@@ -185,6 +188,7 @@ async def test_back_to_back_ok() -> None:
 # test_invalid_participant
 # ---------------------------------------------------------------------------
 
+
 @pytest.mark.asyncio
 async def test_invalid_participant() -> None:
     """MEET-01: участник не из команды → HTTPException 422."""
@@ -214,6 +218,7 @@ async def test_invalid_participant() -> None:
 # test_jitsi_token_format
 # ---------------------------------------------------------------------------
 
+
 @pytest.mark.asyncio
 async def test_jitsi_token_format() -> None:
     """MEET-04: jitsi_room_token генерируется через secrets.token_urlsafe(32)."""
@@ -226,7 +231,9 @@ async def test_jitsi_token_format() -> None:
             new=AsyncMock(return_value=[]),
         ):
             with patch("app.meetings.service._acquire_participant_locks", new=AsyncMock()):
-                with patch("app.meetings.service.secrets.token_urlsafe", return_value=fake_token) as mock_token:
+                with patch(
+                    "app.meetings.service.secrets.token_urlsafe", return_value=fake_token
+                ) as mock_token:
                     # publish_event перенесён в router.py — сервис публикацией не занимается
                     meeting = await create_meeting(
                         mock_session,
@@ -246,6 +253,7 @@ async def test_jitsi_token_format() -> None:
 # test_cancel_owner
 # ---------------------------------------------------------------------------
 
+
 @pytest.mark.asyncio
 async def test_cancel_owner() -> None:
     """MEET-03: отмена встречи → status=CANCELLED + flush."""
@@ -262,6 +270,7 @@ async def test_cancel_owner() -> None:
 # ---------------------------------------------------------------------------
 # test_cancel_participant_403
 # ---------------------------------------------------------------------------
+
 
 def test_cancel_participant_403() -> None:
     """MEET-03: проверка owner — логика 403 находится в router-зависимости require_meeting_owner.
@@ -280,6 +289,7 @@ def test_cancel_participant_403() -> None:
 # ---------------------------------------------------------------------------
 # test_cancelled_not_in_conflict
 # ---------------------------------------------------------------------------
+
 
 @pytest.mark.asyncio
 async def test_cancelled_not_in_conflict() -> None:
@@ -308,6 +318,7 @@ async def test_cancelled_not_in_conflict() -> None:
 # test_jitsi_url_participant_only
 # ---------------------------------------------------------------------------
 
+
 def test_jitsi_url_participant_only() -> None:
     """MEET-04: jitsi_url возвращается только участнику; не-участник получает None (D-10)."""
     creator_id = uuid.uuid4()
@@ -332,6 +343,7 @@ def test_jitsi_url_participant_only() -> None:
 # ---------------------------------------------------------------------------
 # test_calendar_month_range
 # ---------------------------------------------------------------------------
+
 
 @pytest.mark.asyncio
 async def test_calendar_month_range() -> None:
@@ -363,6 +375,7 @@ async def test_calendar_month_range() -> None:
 # test_calendar_week_range
 # ---------------------------------------------------------------------------
 
+
 @pytest.mark.asyncio
 async def test_calendar_week_range() -> None:
     """CAL-03: get_calendar_events корректно обрабатывает недельный диапазон."""
@@ -387,6 +400,7 @@ async def test_calendar_week_range() -> None:
 # ---------------------------------------------------------------------------
 # test_calendar_day_range
 # ---------------------------------------------------------------------------
+
 
 @pytest.mark.asyncio
 async def test_calendar_day_range() -> None:

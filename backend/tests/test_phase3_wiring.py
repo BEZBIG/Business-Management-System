@@ -58,10 +58,7 @@ def test_team_admin_scalar_only_column_list() -> None:
     assert TeamAdmin.column_list, "TeamAdmin.column_list не должен быть пустым"
 
     # Убеждаемся, что relationship member_links не включён
-    col_names = [
-        c.key if hasattr(c, "key") else str(c)
-        for c in TeamAdmin.column_list
-    ]
+    col_names = [c.key if hasattr(c, "key") else str(c) for c in TeamAdmin.column_list]
     assert "member_links" not in col_names, (
         "TeamAdmin.column_list не должен содержать relationship 'member_links' "
         "(N+1 / MissingGreenlet protection)"
@@ -70,9 +67,7 @@ def test_team_admin_scalar_only_column_list() -> None:
     # Проверяем присутствие ожидаемых скалярных полей
     expected_cols = {Team.id, Team.name, Team.invite_code, Team.created_at}
     for col in expected_cols:
-        assert col in TeamAdmin.column_list, (
-            f"Ожидаем {col} в TeamAdmin.column_list"
-        )
+        assert col in TeamAdmin.column_list, f"Ожидаем {col} в TeamAdmin.column_list"
 
 
 def test_task_admin_can_delete_false() -> None:
@@ -91,10 +86,7 @@ def test_task_admin_scalar_only_column_list() -> None:
     assert TaskAdmin.column_list, "TaskAdmin.column_list не должен быть пустым"
 
     # Убеждаемся, что relationship comments не включён
-    col_names = [
-        c.key if hasattr(c, "key") else str(c)
-        for c in TaskAdmin.column_list
-    ]
+    col_names = [c.key if hasattr(c, "key") else str(c) for c in TaskAdmin.column_list]
     assert "comments" not in col_names, (
         "TaskAdmin.column_list не должен содержать relationship 'comments' "
         "(N+1 / MissingGreenlet protection)"
@@ -102,12 +94,15 @@ def test_task_admin_scalar_only_column_list() -> None:
 
     # Проверяем присутствие ожидаемых скалярных полей
     expected_cols = {
-        Task.id, Task.title, Task.status, Task.is_deleted, Task.team_id, Task.created_at
+        Task.id,
+        Task.title,
+        Task.status,
+        Task.is_deleted,
+        Task.team_id,
+        Task.created_at,
     }
     for col in expected_cols:
-        assert col in TaskAdmin.column_list, (
-            f"Ожидаем {col} в TaskAdmin.column_list"
-        )
+        assert col in TaskAdmin.column_list, f"Ожидаем {col} в TaskAdmin.column_list"
 
 
 def test_setup_admin_registers_team_and_task_admin() -> None:

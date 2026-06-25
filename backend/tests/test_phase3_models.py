@@ -12,9 +12,9 @@ import pytest
 def test_phase3_tables_in_metadata() -> None:
     """Пять таблиц фазы 3 присутствуют в Base.metadata после импорта моделей."""
     try:
-        from app.teams.models import Team, TeamMember  # noqa: F401
-        from app.tasks.models import Task, TaskComment  # noqa: F401
         from app.ratings.models import Rating  # noqa: F401
+        from app.tasks.models import Task, TaskComment  # noqa: F401
+        from app.teams.models import Team, TeamMember  # noqa: F401
     except ModuleNotFoundError:
         pytest.skip("Phase 3 models not yet implemented")
 
@@ -33,16 +33,15 @@ def test_ratings_unique_constraint() -> None:
     except ModuleNotFoundError:
         pytest.skip("app.ratings not yet implemented")
 
-    from app.db.base import Base
     from sqlalchemy import UniqueConstraint
+
+    from app.db.base import Base
 
     ratings_table = Base.metadata.tables.get("ratings")
     assert ratings_table is not None, "Таблица ratings не найдена в metadata"
 
     constraint_names = {
-        c.name
-        for c in ratings_table.constraints
-        if isinstance(c, UniqueConstraint)
+        c.name for c in ratings_table.constraints if isinstance(c, UniqueConstraint)
     }
     assert "uq_ratings_task_rater" in constraint_names, (
         f"UniqueConstraint uq_ratings_task_rater не найден. Есть: {constraint_names}"

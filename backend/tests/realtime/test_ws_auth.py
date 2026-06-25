@@ -10,11 +10,12 @@ TestClient.websocket_connect — синхронный API; тесты объяв
 from __future__ import annotations
 
 import uuid
+from collections.abc import Iterator
 from contextlib import contextmanager
-from typing import Iterator
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
+from starlette.websockets import WebSocketDisconnect
 
 _REALTIME_AVAILABLE = False
 
@@ -30,7 +31,7 @@ except (ModuleNotFoundError, ImportError):
 def _make_ws_user(
     is_active: bool = True,
     user_id: uuid.UUID | None = None,
-) -> "MagicMock":
+) -> MagicMock:
     """Создаёт mock-пользователя для WS-тестов без инициализации SA ORM."""
     uid = user_id or uuid.uuid4()
     user = MagicMock()
@@ -55,7 +56,7 @@ def _ws_client() -> Iterator[object]:
     yield TestClient(app, raise_server_exceptions=False)
 
 
-def _mock_session_for(user: "User | None") -> MagicMock:
+def _mock_session_for(user: object | None) -> MagicMock:
     """Создаёт мок async_session_factory, возвращающий пользователя через session.get."""
     mock_session = AsyncMock()
     mock_session.get.return_value = user
@@ -76,8 +77,8 @@ def test_invalid_token_closes_4008() -> None:
 
     with _ws_client() as client:
         with patch("app.realtime.router.redis_client", mock_redis):
-            with pytest.raises(Exception):
-                # Невалидный JWT → close(4008) до accept → WebSocketError
+            with pytest.raises(WebSocketDisconnect):
+                # Невалидный JWT → close(4008) до accept → WebSocketDisconnect
                 with client.websocket_connect(
                     "/ws",
                     subprotocols=["bearer.this.is.not.a.valid.jwt"],
@@ -91,7 +92,7 @@ def test_missing_bearer_closes_4008() -> None:
         pytest.skip("app.realtime not yet implemented")
 
     with _ws_client() as client:
-        with pytest.raises(Exception):
+        with pytest.raises(WebSocketDisconnect):
             with client.websocket_connect("/ws", subprotocols=["some-other-protocol"]):
                 pass  # не должны добраться сюда
 
@@ -135,7 +136,7 @@ def test_revoked_token() -> None:
 
     with _ws_client() as client:
         with patch("app.realtime.router.redis_client", mock_redis):
-            with pytest.raises(Exception):
+            with pytest.raises(WebSocketDisconnect):
                 with client.websocket_connect(
                     "/ws",
                     subprotocols=[f"bearer.{token}"],
@@ -161,7 +162,7 @@ def test_inactive_user() -> None:
             patch("app.realtime.router.redis_client", mock_redis),
             patch("app.realtime.router.async_session_factory", mock_factory),
         ):
-            with pytest.raises(Exception):
+            with pytest.raises(WebSocketDisconnect):
                 with client.websocket_connect(
                     "/ws",
                     subprotocols=[f"bearer.{token}"],
@@ -187,7 +188,7 @@ def test_nonexistent_user_closes_4008() -> None:
             patch("app.realtime.router.redis_client", mock_redis),
             patch("app.realtime.router.async_session_factory", mock_factory),
         ):
-            with pytest.raises(Exception):
+            with pytest.raises(WebSocketDisconnect):
                 with client.websocket_connect(
                     "/ws",
                     subprotocols=[f"bearer.{token}"],
@@ -200,12 +201,12 @@ def test_token_without_jti_closes_4008() -> None:
     if not _REALTIME_AVAILABLE:
         pytest.skip("app.realtime not yet implemented")
 
+    # Вручную создаём токен без jti — такой токен проверит ключ "jti:" (пустой) в Redis
+    from datetime import UTC, datetime, timedelta
+
     import jwt as pyjwt
 
     from app.core.config import settings
-
-    # Вручную создаём токен без jti — такой токен проверит ключ "jti:" (пустой) в Redis
-    from datetime import UTC, datetime, timedelta
 
     now = datetime.now(UTC)
     payload_no_jti = {
@@ -222,7 +223,7 @@ def test_token_without_jti_closes_4008() -> None:
 
     with _ws_client() as client:
         with patch("app.realtime.router.redis_client", mock_redis):
-            with pytest.raises(Exception):
+            with pytest.raises(WebSocketDisconnect):
                 with client.websocket_connect(
                     "/ws",
                     subprotocols=[f"bearer.{token}"],
@@ -235,12 +236,12 @@ def test_token_without_sub_closes_4008() -> None:
     if not _REALTIME_AVAILABLE:
         pytest.skip("app.realtime not yet implemented")
 
+    import uuid as _uuid
+    from datetime import UTC, datetime, timedelta
+
     import jwt as pyjwt
 
     from app.core.config import settings
-
-    from datetime import UTC, datetime, timedelta
-    import uuid as _uuid
 
     now = datetime.now(UTC)
     payload_no_sub = {
@@ -257,7 +258,7 @@ def test_token_without_sub_closes_4008() -> None:
 
     with _ws_client() as client:
         with patch("app.realtime.router.redis_client", mock_redis):
-            with pytest.raises(Exception):
+            with pytest.raises(WebSocketDisconnect):
                 with client.websocket_connect(
                     "/ws",
                     subprotocols=[f"bearer.{token}"],

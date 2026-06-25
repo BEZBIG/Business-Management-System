@@ -94,14 +94,16 @@ async def test_listener_routes_pmessage() -> None:
     payload_data = {"type": "digest", "v": 1, "data": {"content": "тест"}}
     raw_data = json.dumps(payload_data)
 
-    mock_redis = _make_pubsub_mock([
-        {
-            "type": "pmessage",
-            "pattern": "notifications:*",
-            "channel": f"notifications:{user_id}",
-            "data": raw_data,
-        }
-    ])
+    mock_redis = _make_pubsub_mock(
+        [
+            {
+                "type": "pmessage",
+                "pattern": "notifications:*",
+                "channel": f"notifications:{user_id}",
+                "data": raw_data,
+            }
+        ]
+    )
 
     mock_manager = AsyncMock(spec=ConnectionManager)
 
@@ -117,20 +119,22 @@ async def test_listener_skips_non_pmessage() -> None:
     if not _LISTENER_AVAILABLE:
         pytest.skip("app.realtime.listener not yet implemented")
 
-    mock_redis = _make_pubsub_mock([
-        {
-            "type": "psubscribe",
-            "pattern": "notifications:*",
-            "channel": "notifications:*",
-            "data": 1,
-        },
-        {
-            "type": "ping",
-            "pattern": None,
-            "channel": None,
-            "data": None,
-        },
-    ])
+    mock_redis = _make_pubsub_mock(
+        [
+            {
+                "type": "psubscribe",
+                "pattern": "notifications:*",
+                "channel": "notifications:*",
+                "data": 1,
+            },
+            {
+                "type": "ping",
+                "pattern": None,
+                "channel": None,
+                "data": None,
+            },
+        ]
+    )
 
     mock_manager = AsyncMock(spec=ConnectionManager)
 
@@ -150,22 +154,24 @@ async def test_listener_survives_invalid_json() -> None:
     valid_user_id = "good-json-user"
     valid_payload = {"type": "digest", "v": 1}
 
-    mock_redis = _make_pubsub_mock([
-        # Первое сообщение — битый JSON
-        {
-            "type": "pmessage",
-            "pattern": "notifications:*",
-            "channel": f"notifications:{user_id}",
-            "data": "not valid json {{{",
-        },
-        # Второе сообщение — валидный JSON; listener должен продолжить и доставить
-        {
-            "type": "pmessage",
-            "pattern": "notifications:*",
-            "channel": f"notifications:{valid_user_id}",
-            "data": json.dumps(valid_payload),
-        },
-    ])
+    mock_redis = _make_pubsub_mock(
+        [
+            # Первое сообщение — битый JSON
+            {
+                "type": "pmessage",
+                "pattern": "notifications:*",
+                "channel": f"notifications:{user_id}",
+                "data": "not valid json {{{",
+            },
+            # Второе сообщение — валидный JSON; listener должен продолжить и доставить
+            {
+                "type": "pmessage",
+                "pattern": "notifications:*",
+                "channel": f"notifications:{valid_user_id}",
+                "data": json.dumps(valid_payload),
+            },
+        ]
+    )
 
     mock_manager = AsyncMock(spec=ConnectionManager)
 
@@ -199,9 +205,7 @@ async def test_listener_multiple_messages() -> None:
 
     assert mock_manager.send_to_user.call_count == 3
     for i in range(3):
-        mock_manager.send_to_user.assert_any_call(
-            f"user-{i}", {"type": "digest", "v": 1, "idx": i}
-        )
+        mock_manager.send_to_user.assert_any_call(f"user-{i}", {"type": "digest", "v": 1, "idx": i})
 
 
 @pytest.mark.asyncio

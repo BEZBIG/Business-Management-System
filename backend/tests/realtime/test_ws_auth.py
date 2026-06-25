@@ -193,3 +193,73 @@ def test_nonexistent_user_closes_4008() -> None:
                     subprotocols=[f"bearer.{token}"],
                 ):
                     pass  # соединение не должно быть принято
+
+
+def test_token_without_jti_closes_4008() -> None:
+    """WR-01: токен без jti claim не должен обходить revocation-check → закрытие 4008."""
+    if not _REALTIME_AVAILABLE:
+        pytest.skip("app.realtime not yet implemented")
+
+    import jwt as pyjwt
+
+    from app.core.config import settings
+
+    # Вручную создаём токен без jti — такой токен проверит ключ "jti:" (пустой) в Redis
+    from datetime import UTC, datetime, timedelta
+
+    now = datetime.now(UTC)
+    payload_no_jti = {
+        "sub": str(uuid.uuid4()),
+        "type": "access",
+        "iat": now,
+        "exp": now + timedelta(minutes=15),
+        # jti намеренно отсутствует
+    }
+    token = pyjwt.encode(payload_no_jti, settings.jwt_secret, algorithm="HS256")
+
+    mock_redis = AsyncMock()
+    mock_redis.exists.return_value = 0  # Redis не должен даже вызываться
+
+    with _ws_client() as client:
+        with patch("app.realtime.router.redis_client", mock_redis):
+            with pytest.raises(Exception):
+                with client.websocket_connect(
+                    "/ws",
+                    subprotocols=[f"bearer.{token}"],
+                ):
+                    pass  # соединение не должно быть принято
+
+
+def test_token_without_sub_closes_4008() -> None:
+    """WR-02: токен без sub claim не должен вызывать KeyError (500) → корректное закрытие 4008."""
+    if not _REALTIME_AVAILABLE:
+        pytest.skip("app.realtime not yet implemented")
+
+    import jwt as pyjwt
+
+    from app.core.config import settings
+
+    from datetime import UTC, datetime, timedelta
+    import uuid as _uuid
+
+    now = datetime.now(UTC)
+    payload_no_sub = {
+        "type": "access",
+        "jti": _uuid.uuid4().hex,
+        "iat": now,
+        "exp": now + timedelta(minutes=15),
+        # sub намеренно отсутствует
+    }
+    token = pyjwt.encode(payload_no_sub, settings.jwt_secret, algorithm="HS256")
+
+    mock_redis = AsyncMock()
+    mock_redis.exists.return_value = 0  # jti присутствует, revocation-check проходит
+
+    with _ws_client() as client:
+        with patch("app.realtime.router.redis_client", mock_redis):
+            with pytest.raises(Exception):
+                with client.websocket_connect(
+                    "/ws",
+                    subprotocols=[f"bearer.{token}"],
+                ):
+                    pass  # соединение не должно быть принято

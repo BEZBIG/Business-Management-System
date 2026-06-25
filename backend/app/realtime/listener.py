@@ -72,6 +72,11 @@ async def redis_pubsub_listener(
 
                     await manager.send_to_user(user_id, payload)
 
+                # listen() завершился штатно (генератор исчерпан / pubsub закрыт):
+                # в проде это происходит только при намеренном закрытии — выходим,
+                # реконнект делаем лишь при RedisError/OSError ниже (иначе busy-loop).
+                return
+
         except asyncio.CancelledError:
             # Нормальная остановка при shutdown — обязательно пробрасываем (Pitfall 5)
             logger.info("pubsub_listener_stopping")

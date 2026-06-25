@@ -250,13 +250,16 @@ async def test_listener_reconnects_after_redis_error() -> None:
 
     mock_manager = AsyncMock(spec=ConnectionManager)
 
-    # Мокируем asyncio.sleep чтобы не ждать реальный backoff
-    with patch("app.realtime.listener.asyncio.sleep", new=AsyncMock(return_value=None)):
+    # _BACKOFF_INITIAL=0 → backoff-сон мгновенный. НЕ мокаем asyncio.sleep:
+    # это глобальный объект модуля, и его патч сломал бы собственные await asyncio.sleep(0)
+    # теста (event loop перестал бы уступать управление listener-таску).
+    with patch("app.realtime.listener._BACKOFF_INITIAL", 0.0):
         task = asyncio.create_task(redis_pubsub_listener(mock_redis, mock_manager))
-        # Ждём пока listener подключится и доставит сообщение
-        await asyncio.sleep(0)
-        await asyncio.sleep(0)
-        await asyncio.sleep(0)
+        # Ждём (с ограничением) пока listener переподключится и доставит сообщение
+        for _ in range(100):
+            await asyncio.sleep(0)
+            if mock_manager.send_to_user.called:
+                break
         task.cancel()
         with pytest.raises(asyncio.CancelledError):
             await task

@@ -10,7 +10,7 @@ import asyncio
 import json
 from collections.abc import AsyncGenerator
 from typing import Any
-from unittest.mock import AsyncMock, MagicMock
+from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
@@ -202,3 +202,64 @@ async def test_listener_multiple_messages() -> None:
         mock_manager.send_to_user.assert_any_call(
             f"user-{i}", {"type": "digest", "v": 1, "idx": i}
         )
+
+
+@pytest.mark.asyncio
+async def test_listener_reconnects_after_redis_error() -> None:
+    """CR-02: RedisError не убивает listener-таск — происходит переподключение с backoff.
+
+    Мок: первый вызов pubsub() поднимает RedisError (имитирует разрыв соединения),
+    второй вызов возвращает нормальный pubsub с одним pmessage, затем CancelledError
+    завершает таск — проверяем, что первая ошибка не убила цикл.
+    """
+    if not _LISTENER_AVAILABLE:
+        pytest.skip("app.realtime.listener not yet implemented")
+
+    from redis.exceptions import ConnectionError as RedisConnectionError
+
+    user_id = "reconnect-test-user"
+    payload_data = {"type": "digest", "v": 1}
+    raw_data = json.dumps(payload_data)
+
+    # Успешный pubsub после переподключения
+    async def _listen_once() -> AsyncGenerator[dict[str, Any], None]:
+        yield {
+            "type": "pmessage",
+            "pattern": "notifications:*",
+            "channel": f"notifications:{user_id}",
+            "data": raw_data,
+        }
+        # После единственного сообщения блокируемся — ждём CancelledError
+        await asyncio.sleep(1000)
+
+    # Первый pubsub выбрасывает ошибку при psubscribe
+    fail_pubsub = MagicMock()
+    fail_pubsub.psubscribe = AsyncMock(side_effect=RedisConnectionError("connection refused"))
+    fail_pubsub.__aenter__ = AsyncMock(return_value=fail_pubsub)
+    fail_pubsub.__aexit__ = AsyncMock(return_value=False)
+
+    # Второй pubsub работает нормально
+    ok_pubsub = MagicMock()
+    ok_pubsub.psubscribe = AsyncMock(return_value=None)
+    ok_pubsub.listen.return_value = _listen_once()
+    ok_pubsub.__aenter__ = AsyncMock(return_value=ok_pubsub)
+    ok_pubsub.__aexit__ = AsyncMock(return_value=False)
+
+    mock_redis = MagicMock()
+    mock_redis.pubsub.side_effect = [fail_pubsub, ok_pubsub]
+
+    mock_manager = AsyncMock(spec=ConnectionManager)
+
+    # Мокируем asyncio.sleep чтобы не ждать реальный backoff
+    with patch("app.realtime.listener.asyncio.sleep", new=AsyncMock(return_value=None)):
+        task = asyncio.create_task(redis_pubsub_listener(mock_redis, mock_manager))
+        # Ждём пока listener подключится и доставит сообщение
+        await asyncio.sleep(0)
+        await asyncio.sleep(0)
+        await asyncio.sleep(0)
+        task.cancel()
+        with pytest.raises(asyncio.CancelledError):
+            await task
+
+    # Сообщение из второго подключения должно было доставиться
+    mock_manager.send_to_user.assert_called_once_with(user_id, payload_data)

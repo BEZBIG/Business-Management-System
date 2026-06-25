@@ -52,12 +52,23 @@ def _make_meeting(
 
 
 def _make_mock_session() -> AsyncMock:
-    """Создаёт AsyncMock-сессию с поддержкой add и flush."""
+    """Создаёт AsyncMock-сессию с поддержкой add и flush.
+
+    flush() автоматически назначает UUID объектам с id=None — имитирует server_default.
+    Это необходимо для тестов, добавляющих publish_event после flush (Task 3, план 05-03).
+    """
     mock_session = AsyncMock()
-    mock_session.flush = AsyncMock()
     added: list[object] = []
     mock_session.add = lambda obj: added.append(obj)
     mock_session._added = added
+
+    async def _flush_with_id_assign(*args: object, **kwargs: object) -> None:
+        """Назначает UUID всем добавленным объектам с id=None."""
+        for obj in added:
+            if hasattr(obj, "id") and obj.id is None:
+                obj.id = uuid.uuid4()  # type: ignore[attr-defined]
+
+    mock_session.flush = _flush_with_id_assign
     return mock_session
 
 
@@ -155,15 +166,17 @@ async def test_back_to_back_ok() -> None:
             new=AsyncMock(return_value=[]),
         ):
             with patch("app.meetings.service._acquire_participant_locks", new=AsyncMock()):
-                meeting = await create_meeting(
-                    mock_session,
-                    team_id=uuid.uuid4(),
-                    creator_id=uuid.uuid4(),
-                    title="Back-to-back OK",
-                    start_time=_future(timedelta(hours=2)),
-                    end_time=_future(timedelta(hours=3)),
-                    participant_ids=[],
-                )
+                # publish_event мокируется: тест проверяет конфликт-логику, не pub/sub
+                with patch("app.meetings.service.publish_event", new=AsyncMock()):
+                    meeting = await create_meeting(
+                        mock_session,
+                        team_id=uuid.uuid4(),
+                        creator_id=uuid.uuid4(),
+                        title="Back-to-back OK",
+                        start_time=_future(timedelta(hours=2)),
+                        end_time=_future(timedelta(hours=3)),
+                        participant_ids=[],
+                    )
 
     assert meeting.title == "Back-to-back OK"
     assert meeting.status == MeetingStatus.ACTIVE
@@ -215,16 +228,18 @@ async def test_jitsi_token_format() -> None:
         ):
             with patch("app.meetings.service._acquire_participant_locks", new=AsyncMock()):
                 with patch("app.meetings.service.secrets.token_urlsafe", return_value=fake_token) as mock_token:
-                    meeting = await create_meeting(
-                        mock_session,
-                        team_id=uuid.uuid4(),
-                        creator_id=uuid.uuid4(),
-                        title="Jitsi Test",
-                        start_time=_future(timedelta(hours=1)),
-                        end_time=_future(timedelta(hours=2)),
-                        participant_ids=[],
-                    )
-                    mock_token.assert_called_once_with(32)
+                    # publish_event мокируется: тест проверяет jitsi_room_token, не pub/sub
+                    with patch("app.meetings.service.publish_event", new=AsyncMock()):
+                        meeting = await create_meeting(
+                            mock_session,
+                            team_id=uuid.uuid4(),
+                            creator_id=uuid.uuid4(),
+                            title="Jitsi Test",
+                            start_time=_future(timedelta(hours=1)),
+                            end_time=_future(timedelta(hours=2)),
+                            participant_ids=[],
+                        )
+                        mock_token.assert_called_once_with(32)
 
     assert meeting.jitsi_room_token == fake_token
 
